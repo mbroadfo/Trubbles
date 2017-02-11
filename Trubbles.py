@@ -1,5 +1,4 @@
 import time, re, pygame, serial
-import RPi.GPIO as GPIO
 from twython import TwythonStreamer
 from termcolor import colored
  
@@ -22,6 +21,7 @@ OAUTH_TOKEN = '49630765-tLYMPuHgeLdfNqsQHTVJXltdve3Xi6mqLpvkCotr5'
 OAUTH_TOKEN_SECRET = 'BzuZA6SAIF9BIg4DAuwggTvnLQdTGNzE2mtOyA2PBrd1q'
 
 # -------------------------------------------------------------------------------------------
+
 # Setup callbacks from Twython Streamer
 class BlinkyStreamer(TwythonStreamer):
         def on_success(self, data):
@@ -37,14 +37,15 @@ class BlinkyStreamer(TwythonStreamer):
 				body1 = twitt.group(3)
 				body1 = re.sub(r'http\S+','',body1)
 				body1 = re.sub('$amp;','&',body1)
+				cntr = tlist.insTweet(from1,body1)	# Capture Tweet & Counter
+				
 				if rtwit is not None:
-					from1 = from1 + ' (' + str.strip(rtwit) + ')'
+					from1 = from1 + ' (' + str.strip(rtwit) + str(cntr) + ')'
 				elif from1 != str.strip(from1):
 					print colored('! NEW TWEET !','blue')
 					reTwit = False
 	                        print 'FROM: ' + from1
 				print 'BODY: ' + body1
-				tlist.insTweet(from1,body1)	# Capture Tweet
 				for actions in actionList:
 					n = 0
 					for actor in actions:
@@ -90,43 +91,47 @@ class BlinkyStreamer(TwythonStreamer):
 									pygame.mixer.music.play()
 						n += 1
 				print '----------------------------------------------'
-		b1 = GPIO.input(btn1)
-		b2 = GPIO.input(btn2)
 		
-		if b1 == False:	# Button pressed
-#			print 'Button 1 (', b1, ') Pressed'
-			tlist.releaseTweets(3)
-		
-		if b2 == False:	# Button pressed
-#			print 'Button 2 (', b2, ') Pressed'
-			tlist.releaseTweets(10)
+		if ser.inWaiting() > 0:
+			btnChk = ser.read()
+			if btnChk == '1':
+				tlist.releaseTweets(10)
+			if btnChk == '2':
+				tlist.clear()
 		
 	def on_error(self, status_code, data):
-		print 'ERR:' + status_code
+		print 'ERR:' + str(status_code)
+
 # -------------------------------------------------------------------------
 
 class topTweets:
 #	Class to store top tweets by actor
 	def __init__ (self):
 		topTweets.tweetList = {}		# initialize dictionary
+
+	def clear(self):
+		print '** Tweet List Cleared **'
+		print '------------------------'
+		topTweets.tweetList = {}		# clear dictionary
+
 	def insTweet(self, fromer, bodyr):
 		tweetr = fromer + ':' + bodyr
 		if topTweets.tweetList.has_key(tweetr):
 			topTweets.tweetList[tweetr] +=1
-			print colored("Tweet Again!",'red')
 		else:
 			topTweets.tweetList[tweetr] = 1
-			print "1st Tweet"
+		return str(topTweets.tweetList[tweetr])
+
 	def releaseTweets(self,count):
-		i = 0;
-		print '!!! TOP TWEET TIME !!! (',str(count),')'
-		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k)):
-			print "%s) %s: %s" % (str(i+1), key, value)
+		i = 0
+		print '!!! TOP ', str(count),' TWEETs !!!'
+		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
+			print "%s) %s: %s" % (str(i+1), value, key)
 			i += 1
 			if i >= count:
 				break
 		print '---------------------------------------------------'
-		topTweets.tweetList = {}		# clear dictionary
+
 # -------------------------------------------------------------------------------------------
 
 running = True
@@ -136,13 +141,6 @@ tlist = topTweets()
 # Setup Serial IO to Arduino
 ser = serial.Serial('/dev/ttyACM0',115200)
 
-# Setup GPIO as output
-GPIO.setmode(GPIO.BCM)
-btn1 = 22
-btn2 = 23
-GPIO.setup(btn1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(btn2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
 while running:	# Loop Control
 	# Create Streamer
 	try:
@@ -150,12 +148,13 @@ while running:	# Loop Control
 		stream.statuses.filter(track=TERMS)
 	except KeyboardInterrupt:
 		running = False
-		print colored('\nBye Bye!','cyan')
+		print colored('\n-----------','yellow')
+		print colored('Goodbye.','cyan')
+		print colored('-----------','yellow')
 	except Exception as e:
 		print 'ERROR: ' + str(e)
 		continue
 	
-
 
 
 
