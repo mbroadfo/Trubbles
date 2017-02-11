@@ -94,11 +94,11 @@ class BlinkyStreamer(TwythonStreamer):
 		b2 = GPIO.input(btn2)
 		
 		if b1 == False:	# Button pressed
-			print 'Button 1 (', b1, ') Pressed'
+#			print 'Button 1 (', b1, ') Pressed'
 			tlist.releaseTweets(3)
 		
 		if b2 == False:	# Button pressed
-			print 'Button 2 (', b2, ') Pressed'
+#			print 'Button 2 (', b2, ') Pressed'
 			tlist.releaseTweets(10)
 		
 	def on_error(self, status_code, data):
@@ -119,26 +119,27 @@ class topTweets:
 			print "1st Tweet"
 	def releaseTweets(self,count):
 		i = 0;
-		print 'TOP TWEETS!'
+		print '!!! TOP TWEET TIME !!! (',str(count),')'
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k)):
-			print "%s: %s" % (key, value)
+			print "%s) %s: %s" % (str(count), key, value)
 			i += 1
 			if i >= count:
 				break
+		print '---------------------------------------------------'
 		topTweets.tweetList = {}		# clear dictionary
 # -------------------------------------------------------------------------------------------
 
 running = True
 pygame.mixer.init()
 tlist = topTweets()
-btn1 = 22
-btn2 = 23
 
 # Setup Serial IO to Arduino
 ser = serial.Serial('/dev/ttyACM0',115200)
 
 # Setup GPIO as output
 GPIO.setmode(GPIO.BCM)
+btn1 = 22
+btn2 = 23
 GPIO.setup(btn1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(btn2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
