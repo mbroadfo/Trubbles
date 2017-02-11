@@ -44,7 +44,7 @@ class BlinkyStreamer(TwythonStreamer):
 					reTwit = False
 	                        print 'FROM: ' + from1
 				print 'BODY: ' + body1
-#				tlist.insTweet(tlist, from1,body1)	# Capture Tweet
+				tlist.insTweet(from1,body1)	# Capture Tweet
 				for actions in actionList:
 					n = 0
 					for actor in actions:
@@ -88,9 +88,19 @@ class BlinkyStreamer(TwythonStreamer):
 									else:
 										pygame.mixer.music.load("beep14.mp3")
 									pygame.mixer.music.play()
-
 						n += 1
 				print '----------------------------------------------'
+		b1 = GPIO.input(btn1)
+		b2 = GPIO.input(btn2)
+		
+		if b1 == False:	# Button pressed
+			print 'Button 1 (', b1, ') Pressed'
+			tlist.releaseTweets(3)
+		
+		if b2 == False:	# Button pressed
+			print 'Button 2 (', b2, ') Pressed'
+			tlist.releaseTweets(10)
+		
 	def on_error(self, status_code, data):
 		print 'ERR:' + status_code
 # -------------------------------------------------------------------------
@@ -98,25 +108,39 @@ class BlinkyStreamer(TwythonStreamer):
 class topTweets:
 #	Class to store top tweets by actor
 	def __init__ (self):
-		topTweets = {}		# initialize dictionary
+		topTweets.tweetList = {}		# initialize dictionary
 	def insTweet(self, fromer, bodyr):
 		tweetr = fromer + ':' + bodyr
-		if topTweets.has_key(tweetr):
-			topTweets[tweetr] +=1
+		if topTweets.tweetList.has_key(tweetr):
+			topTweets.tweetList[tweetr] +=1
+			print colored("Tweet Again!",'red')
 		else:
-			topTweets[tweetr] = 1
-	def releaseTweets():
-		for key, value in sorted(topTweets.items(), key=lambda (k,v): (v,k)):
+			topTweets.tweetList[tweetr] = 1
+			print "1st Tweet"
+	def releaseTweets(self,count):
+		i = 0;
+		print 'TOP TWEETS!'
+		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k)):
 			print "%s: %s" % (key, value)
+			i += 1
+			if i >= count:
+				break
+		topTweets.tweetList = {}		# clear dictionary
 # -------------------------------------------------------------------------------------------
 
 running = True
 pygame.mixer.init()
-tlist = topTweets
+tlist = topTweets()
+btn1 = 22
+btn2 = 23
 
 # Setup Serial IO to Arduino
 ser = serial.Serial('/dev/ttyACM0',115200)
 
+# Setup GPIO as output
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(btn1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(btn2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 while running:	# Loop Control
 	# Create Streamer
@@ -129,6 +153,8 @@ while running:	# Loop Control
 	except Exception as e:
 		print 'ERROR: ' + str(e)
 		continue
+	
+
 
 
 
