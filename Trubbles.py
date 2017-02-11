@@ -121,7 +121,7 @@ class topTweets:
 		i = 0;
 		print '!!! TOP TWEET TIME !!! (',str(count),')'
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k)):
-			print "%s) %s: %s" % (str(count), key, value)
+			print "%s) %s: %s" % (str(i+1), key, value)
 			i += 1
 			if i >= count:
 				break
