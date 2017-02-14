@@ -7,11 +7,11 @@ print colored('hello', 'red'), colored('world', 'blue')
 print colored('-----------','yellow')
 
 # Search terms
-TERMS = ['POTUS','WhiteHouse','Trump','SNL']
-actionList  = (['1','@POTUS','@WhiteHouse','@PressSec','@realDonaldTrump'],
+TERMS = ['@POTUS','@WhiteHouse']
+actionList  = (['1','@POTUS','@WhiteHouse','@PressSec','@realDonaldTrump','@FLOTUS'],
                ['2','@VP','@DeptofDefense','@DHSgov','@CIA','@UN','@StateDept','@USTreasury','@real_sessions','@HHSGov','@USChamber'],
-               ['3','@SenateMajLdr','@SpeakerRyan','@GOPLeader','@GOP'],
-               ['4','@FoxNews','@foxheadlines','@foxnewsalert','@seanhannity','@oreillyfactor','@foxandfriends'])
+               ['3','@SenateMajLdr','@SpeakerRyan','@GOPLeader','@GOP','@NancyPelosi'],
+               ['4','@FoxNews','@foxheadlines','@foxnewsalert','@seanhannity','@oreillyfactor','@foxandfriends','@LouDobbs'])
 actionColor = ['red','yellow','magenta','cyan']
 
 # Twitter application authentication
@@ -31,21 +31,13 @@ class BlinkyStreamer(TwythonStreamer):
 			twitt = re.search(patrn1,tweet)
 			if twitt is not None:
 				ser.write('h')		#  Blink LED
-				reTwit = True		# Initialize
 				rtwit = twitt.group(1)
 				from1 = twitt.group(2)
 				body1 = twitt.group(3)
 				body1 = re.sub(r'http\S+','',body1)
 				body1 = re.sub('$amp;','&',body1)
-				cntr = tlist.insTweet(from1,body1)	# Capture Tweet & Counter
-				
-				if rtwit is not None:
-					from1 = from1 + ' (' + str.strip(rtwit) + str(cntr) + ')'
-				elif from1 != str.strip(from1):
-					print colored('! NEW TWEET !','blue')
-					reTwit = False
-	                        print 'FROM: ' + from1
-				print 'BODY: ' + body1
+				aList = 0
+
 				for actions in actionList:
 					n = 0
 					for actor in actions:
@@ -56,42 +48,46 @@ class BlinkyStreamer(TwythonStreamer):
 							patrn2 = re.compile(chk)
 							match2 = re.search(patrn2,from1)
 							if match2 is not None:
-								print colored('!!! ACTION ' + actionType + ' !!! - triggered by ' + actor,actionColor[int(actionType)-1])
-								if actionType == '1':
-									ser.write('abcdef')	# 4 Neopixels + 2 Servos
-									if reTwit == False:
-										print colored('!!! FROM OUR SUPREME LEADER !!!','blue')
-										pygame.mixer.music.load("hail_to_the_chief.mp3")
-									else:
-										pygame.mixer.music.load("brokenspaceship.mp3")
-									pygame.mixer.music.play()
-								elif actionType == '2':
-									ser.write('abe')	# 2 Neopixels + 1 Servo
-									if reTwit == False: 
-										print colored('! The Cabinet Speaks !','blue')
-										pygame.mixer.music.load("horse.mp3")
-									else:
-										pygame.mixer.music.load("horse.mp3")
-									pygame.mixer.music.play()
-								elif actionType == '3':
-									ser.write('bcf')	# 2 Neopixels + 1 Servo
-									if reTwit == False: 
-										print colored('! Legislative News !','blue')
-										pygame.mixer.music.load("compute.mp3")
-									else:
-										pygame.mixer.music.load("compute.mp3")
-									pygame.mixer.music.play()
-								elif actionType == '4':
-									ser.write('d')	# 1 Neopixel
-									if reTwit == False: 
-										print colored('! An Opinion!','blue')
-										pygame.mixer.music.load("clicker.mp3")
-									else:
-										pygame.mixer.music.load("beep14.mp3")
-									pygame.mixer.music.play()
+								aList = actionType
+								aTrig = actor
+								break
 						n += 1
+
+				# Capture Tweet & Current Counter
+				cntr = tlist.insTweet(from1,body1,aList)
+
+				# Print Current Tweet
+				if rtwit is not None:
+					reTwit = True
+					from1 = from1 + ' (' + str.strip(rtwit) + str(cntr) + ')'
+				elif from1 != str.strip(from1):
+					print colored('! NEW TWEET !','blue')
+					reTwit = False				
+				print 'FROM: ' + from1
+				print 'BODY: ' + body1
+				
+				# Print List Match Results, Send Action, & Play mp3
+				if aList != 0:
+					print colored('!!! ACTION ' + str(aList) + ' !!! - triggered by ' + aTrig,actionColor[int(aList)-1])
+					if aList == '1':
+						ser.write('a')
+						if reTwit == False: pygame.mixer.music.load("sounds/hail_to_the_chief.mp3")
+						else:               pygame.mixer.music.load("sounds/hail.mp3")
+					elif aList == '2':
+						ser.write('abcd')
+						if reTwit == False: pygame.mixer.music.load("sounds/helloo.mp3")
+						else:               pygame.mixer.music.load("sounds/kittycry.mp3")
+					elif aList == '3':
+						ser.write('bcf')
+						if reTwit == False: pygame.mixer.music.load("sounds/Baby+Giggle+1.mp3")
+						else:               pygame.mixer.music.load("sounds/Burp+2.mp3")
+					elif aList == '4':
+						ser.write('d')
+						if reTwit == False: pygame.mixer.music.load("sounds/cauldronbubbles.mp3")
+						else:               pygame.mixer.music.load("sounds/baboon2.mp3")
+					pygame.mixer.music.play()
 				print '----------------------------------------------'
-		
+
 		if ser.inWaiting() > 0:
 			btnChk = ser.read()
 			if btnChk == '1':
@@ -108,26 +104,28 @@ class topTweets:
 #	Class to store top tweets by actor
 	def __init__ (self):
 		topTweets.tweetList = {}		# initialize dictionary
+		topTweets.twitList = {}			# initialize tweet library
 
 	def clear(self):
 		print '** Tweet List Cleared **'
 		print '------------------------'
 		topTweets.tweetList = {}		# clear dictionary
+		topTweets.twitList = {}			# clear tweet library
 
-	def insTweet(self, fromer, bodyr):
+	def insTweet(self, fromer, bodyr, listr):
 		tweetr = fromer + ':' + bodyr
 		if topTweets.tweetList.has_key(tweetr):
-			topTweets.tweetList[tweetr] += 1
+			topTweets.tweetList[tweetr][0] += 1
 		else:
-			topTweets.tweetList[tweetr] = 1
-		return str(topTweets.tweetList[tweetr])
+			topTweets.tweetList[tweetr] = [1,listr]
+		return str(topTweets.tweetList[tweetr][0])
 
 	def releaseTweets(self,count):
 		i = 0
 		os.system( 'amixer -q set PCM -- 100%' )
 		print '!!! TOP ', str(count),' TWEETs !!!'
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
-			print "%s) %s: %s" % (str(i+1), value, key)
+			print "%s) %s/%s: %s" % (str(i+1), value[0], value[1], key)
 			os.system( 'flite -t "' + key + '"' )
 			i += 1
 			if i >= count:
