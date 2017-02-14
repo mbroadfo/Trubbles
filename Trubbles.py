@@ -1,4 +1,4 @@
-import time, re, pygame, serial
+import time, re, pygame, serial, os
 from twython import TwythonStreamer
 from termcolor import colored
  
@@ -7,7 +7,7 @@ print colored('hello', 'red'), colored('world', 'blue')
 print colored('-----------','yellow')
 
 # Search terms
-TERMS = ['@POTUS','@WhiteHouse','@PresSec','@realDonaldTrump','@Reince']
+TERMS = ['POTUS','WhiteHouse','Trump','SNL']
 actionList  = (['1','@POTUS','@WhiteHouse','@PressSec','@realDonaldTrump'],
                ['2','@VP','@DeptofDefense','@DHSgov','@CIA','@UN','@StateDept','@USTreasury','@real_sessions','@HHSGov','@USChamber'],
                ['3','@SenateMajLdr','@SpeakerRyan','@GOPLeader','@GOP'],
@@ -117,23 +117,26 @@ class topTweets:
 	def insTweet(self, fromer, bodyr):
 		tweetr = fromer + ':' + bodyr
 		if topTweets.tweetList.has_key(tweetr):
-			topTweets.tweetList[tweetr] +=1
+			topTweets.tweetList[tweetr] += 1
 		else:
 			topTweets.tweetList[tweetr] = 1
 		return str(topTweets.tweetList[tweetr])
 
 	def releaseTweets(self,count):
 		i = 0
+		os.system( 'amixer -q set PCM -- 100%' )
 		print '!!! TOP ', str(count),' TWEETs !!!'
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
 			print "%s) %s: %s" % (str(i+1), value, key)
+			os.system( 'flite -t "' + key + '"' )
 			i += 1
 			if i >= count:
 				break
 		print '---------------------------------------------------'
+		os.system( 'amixer -q set PCM -- 50%' )
 
 # -------------------------------------------------------------------------------------------
-
+os.system( 'amixer -q set PCM -- 50%' )
 running = True
 pygame.mixer.init()
 tlist = topTweets()
