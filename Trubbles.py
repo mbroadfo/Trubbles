@@ -1,7 +1,9 @@
+#!/usr/bin/python
 import time, re, pygame, serial, os
+import mysql.connector as mariadb
 from twython import TwythonStreamer
 from termcolor import colored
- 
+
 print colored('-----------','yellow')
 print colored('hello', 'red'), colored('world', 'blue')
 print colored('-----------','yellow')
@@ -19,8 +21,6 @@ APP_KEY = 'idd0G91xrCTttBBRiEDtxGEry'
 APP_SECRET = '3e8ZhY1RmaWPHsc6mJgwMA7IxbgPB2J2WknDyebSVo9sbxHmiQ'
 OAUTH_TOKEN = '49630765-tLYMPuHgeLdfNqsQHTVJXltdve3Xi6mqLpvkCotr5'
 OAUTH_TOKEN_SECRET = 'BzuZA6SAIF9BIg4DAuwggTvnLQdTGNzE2mtOyA2PBrd1q'
-
-os.system( 'amixer -q set PCM -- 80%' )
 
 # -------------------------------------------------------------------------------------------
 
@@ -129,7 +129,7 @@ class topTweets:
 		print '!!! TOP ', str(count),' TWEETs !!!'
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
 			print "%s) %s/%s: %s" % (str(i+1), value[0], value[1], key)
-			if value[1] == '1':
+			if value[1] != '0':
 				os.system( 'flite -t "' + key + '"' )
 			i += 1
 			if i >= count:
@@ -138,14 +138,29 @@ class topTweets:
 		os.system( 'amixer -q set PCM -- 80%' )
 
 # -------------------------------------------------------------------------------------------
-os.system( 'amixer -q set PCM -- 50%' )
-running = True
+os.system( 'amixer -q set PCM -- 80%' )
 pygame.mixer.init()
 tlist = topTweets()
+
+# Connect to Database & 
+mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
+cursor = mariadb_connection.cursor()
+cursor.execute("\
+SELECT A.listid, B.actor, A.command, \
+       CASE WHEN B.soundfile IS NULL THEN A.soundfile ELSE B.soundfile END AS soundfile \
+  FROM list_defaults A \
+ INNER JOIN actors B \
+    ON B.listid = A.listid \
+ WHERE A.active IS True;")
+
+for mList, mActor, mCommand, mSound in cursor:
+	print("ListID: {}, Actor: {}, Command: {}, Soundfile: {}").format (mList,mActor,mCommand,mSound)
+
 
 # Setup Serial IO to Arduino
 ser = serial.Serial('/dev/ttyACM0',115200)
 
+running = True
 while running:	# Loop Control
 	# Create Streamer
 	try:
