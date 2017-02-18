@@ -20,6 +20,8 @@ APP_SECRET = '3e8ZhY1RmaWPHsc6mJgwMA7IxbgPB2J2WknDyebSVo9sbxHmiQ'
 OAUTH_TOKEN = '49630765-tLYMPuHgeLdfNqsQHTVJXltdve3Xi6mqLpvkCotr5'
 OAUTH_TOKEN_SECRET = 'BzuZA6SAIF9BIg4DAuwggTvnLQdTGNzE2mtOyA2PBrd1q'
 
+os.system( 'amixer -q set PCM -- 80%' )
+
 # -------------------------------------------------------------------------------------------
 
 # Setup callbacks from Twython Streamer
@@ -57,12 +59,13 @@ class BlinkyStreamer(TwythonStreamer):
 				cntr = tlist.insTweet(from1,body1,aList)
 
 				# Print Current Tweet
+				reTwit = False
 				if rtwit is not None:
 					reTwit = True
 					from1 = from1 + ' (' + str.strip(rtwit) + str(cntr) + ')'
 				elif from1 != str.strip(from1):
 					print colored('! NEW TWEET !','blue')
-					reTwit = False				
+					reTwit = False
 				print 'FROM: ' + from1
 				print 'BODY: ' + body1
 				
@@ -70,7 +73,7 @@ class BlinkyStreamer(TwythonStreamer):
 				if aList != 0:
 					print colored('!!! ACTION ' + str(aList) + ' !!! - triggered by ' + aTrig,actionColor[int(aList)-1])
 					if aList == '1':
-						ser.write('a')
+						ser.write('abcdefgh')
 						if reTwit == False: pygame.mixer.music.load("sounds/hail_to_the_chief.mp3")
 						else:               pygame.mixer.music.load("sounds/hail.mp3")
 					elif aList == '2':
@@ -126,12 +129,13 @@ class topTweets:
 		print '!!! TOP ', str(count),' TWEETs !!!'
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
 			print "%s) %s/%s: %s" % (str(i+1), value[0], value[1], key)
-			os.system( 'flite -t "' + key + '"' )
+			if value[1] == '1':
+				os.system( 'flite -t "' + key + '"' )
 			i += 1
 			if i >= count:
 				break
 		print '---------------------------------------------------'
-		os.system( 'amixer -q set PCM -- 50%' )
+		os.system( 'amixer -q set PCM -- 80%' )
 
 # -------------------------------------------------------------------------------------------
 os.system( 'amixer -q set PCM -- 50%' )
