@@ -153,9 +153,12 @@ SELECT A.listid, B.actor, A.command, \
     ON B.listid = A.listid \
  WHERE A.active IS True;")
 
+xList,xCommand,xSound = {},{},{}
 for mList, mActor, mCommand, mSound in cursor:
 	print("ListID: {}, Actor: {}, Command: {}, Soundfile: {}").format (mList,mActor,mCommand,mSound)
-
+	xList[mActor] = mList
+	xCommand[mActor] = mCommand
+	xSound[mActor] = mSound
 
 # Setup Serial IO to Arduino
 ser = serial.Serial('/dev/ttyACM0',115200)
