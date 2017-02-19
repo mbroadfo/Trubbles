@@ -8,13 +8,13 @@ print colored('-----------','yellow')
 print colored('hello', 'red'), colored('world', 'blue')
 print colored('-----------','yellow')
 
-# Search terms
-TERMS = ['@POTUS','@WhiteHouse']
-actionList  = (['1','@POTUS','@WhiteHouse','@PressSec','@realDonaldTrump','@FLOTUS'],
-               ['2','@VP','@DeptofDefense','@DHSgov','@CIA','@UN','@StateDept','@USTreasury','@real_sessions','@HHSGov','@USChamber'],
-               ['3','@SenateMajLdr','@SpeakerRyan','@GOPLeader','@GOP','@NancyPelosi'],
-               ['4','@FoxNews','@foxheadlines','@foxnewsalert','@seanhannity','@oreillyfactor','@foxandfriends','@LouDobbs'])
-actionColor = ['red','yellow','magenta','cyan']
+# Search terms - Deprecated - now using relational tables
+#TERMS = ['@POTUS','@WhiteHouse']
+#actionList  = (['1','@POTUS','@WhiteHouse','@PressSec','@realDonaldTrump','@FLOTUS'],
+#               ['2','@VP','@DeptofDefense','@DHSgov','@CIA','@UN','@StateDept','@USTreasury','@real_sessions','@HHSGov','@USChamber'],
+#               ['3','@SenateMajLdr','@SpeakerRyan','@GOPLeader','@GOP','@NancyPelosi'],
+#               ['4','@FoxNews','@foxheadlines','@foxnewsalert','@seanhannity','@oreillyfactor','@foxandfriends','@LouDobbs'])
+#actionColor = ['red','yellow','magenta','cyan']
 
 # Twitter application authentication
 APP_KEY = 'idd0G91xrCTttBBRiEDtxGEry'
@@ -32,7 +32,7 @@ class BlinkyStreamer(TwythonStreamer):
 			patrn1 = re.compile('^(RT )?(.*?@.*?:)\s(.*$)')
 			twitt = re.search(patrn1,tweet)
 			if twitt is not None:
-				ser.write('h')		#  Blink LED
+				ser.write('h')		#  Blink LED Heartbeat
 				rtwit = twitt.group(1)
 				from1 = twitt.group(2)
 				body1 = twitt.group(3)
@@ -40,20 +40,13 @@ class BlinkyStreamer(TwythonStreamer):
 				body1 = re.sub('$amp;','&',body1)
 				aList = 0
 
-				for actions in actionList:
-					n = 0
-					for actor in actions:
-						if n == 0:
-							actionType = actor
-						else:
-							chk = actor + ':'
-							patrn2 = re.compile(chk)
-							match2 = re.search(patrn2,from1)
-							if match2 is not None:
-								aList = actionType
-								aTrig = actor
-								break
-						n += 1
+				if xList.has_key(from1):
+					aList = xList[from1]
+					actionType = xList[from1]
+					aCommand = xCommand[from1]
+					aColor = xColor[from1]
+					aSound = xSound[from1]
+					aTrig = from1
 
 				# Capture Tweet & Current Counter
 				cntr = tlist.insTweet(from1,body1,aList)
@@ -71,23 +64,9 @@ class BlinkyStreamer(TwythonStreamer):
 				
 				# Print List Match Results, Send Action, & Play mp3
 				if aList != 0:
-					print colored('!!! ACTION ' + str(aList) + ' !!! - triggered by ' + aTrig,actionColor[int(aList)-1])
-					if aList == '1':
-						ser.write('abcdefgh')
-						if reTwit == False: pygame.mixer.music.load("sounds/hail_to_the_chief.mp3")
-						else:               pygame.mixer.music.load("sounds/hail.mp3")
-					elif aList == '2':
-						ser.write('abcd')
-						if reTwit == False: pygame.mixer.music.load("sounds/helloo.mp3")
-						else:               pygame.mixer.music.load("sounds/kittycry.mp3")
-					elif aList == '3':
-						ser.write('bcf')
-						if reTwit == False: pygame.mixer.music.load("sounds/Baby+Giggle+1.mp3")
-						else:               pygame.mixer.music.load("sounds/Burp+2.mp3")
-					elif aList == '4':
-						ser.write('d')
-						if reTwit == False: pygame.mixer.music.load("sounds/cauldronbubbles.mp3")
-						else:               pygame.mixer.music.load("sounds/baboon2.mp3")
+					print colored('!!! ACTION ' + str(aList) + ' !!! - triggered by ' + aTrig + "[" + aCommand + "]", aColor)
+					ser.write(aCommand)
+					pygame.mixer.music.load("sounds/"+aSound)
 					pygame.mixer.music.play()
 				print '----------------------------------------------'
 
@@ -138,33 +117,46 @@ class topTweets:
 		os.system( 'amixer -q set PCM -- 80%' )
 
 # -------------------------------------------------------------------------------------------
-os.system( 'amixer -q set PCM -- 80%' )
+# Setup / Initialize
+# -------------------------------------------------------------------------------------------
 pygame.mixer.init()
+os.system( 'amixer -q set PCM -- 80%' )
 tlist = topTweets()
 
-# Connect to Database & 
+# Connect to Database
 mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
-cursor = mariadb_connection.cursor()
+cursor = mariadb_connection.cursor(buffered=True)
+
+# Capture Terms for Twitter
+cursor.execute("SELECT topic from topics where active is true;")
+array = cursor.fetchall()
+TERMS = []
+for row in array:
+        TERMS.append(row[0].encode("utf-8"))
+
+# Capture Lists, & Actors
 cursor.execute("\
-SELECT A.listid, B.actor, A.command, \
+SELECT A.listid, CONCAT(B.actor,':'), A.command, A.textColor, \
        CASE WHEN B.soundfile IS NULL THEN A.soundfile ELSE B.soundfile END AS soundfile \
   FROM list_defaults A \
  INNER JOIN actors B \
     ON B.listid = A.listid \
- WHERE A.active IS True;")
+ WHERE A.active is True;")
 
-xList,xCommand,xSound = {},{},{}
-for mList, mActor, mCommand, mSound in cursor:
-	print("ListID: {}, Actor: {}, Command: {}, Soundfile: {}").format (mList,mActor,mCommand,mSound)
+xList,xCommand,xColor,xSound = {},{},{},{}
+for mList, mActor, mCommand, mColor, mSound in cursor:
+#	print("ListID: {}, Actor: {}, Command: {}, Color: {}, Soundfile: {}").format (mList,mActor,mCommand,mColor,mSound)
 	xList[mActor] = mList
 	xCommand[mActor] = mCommand
+	xColor[mActor] = mColor
 	xSound[mActor] = mSound
 
 # Setup Serial IO to Arduino
 ser = serial.Serial('/dev/ttyACM0',115200)
 
+# Main Loop
 running = True
-while running:	# Loop Control
+while running:
 	# Create Streamer
 	try:
 		stream = BlinkyStreamer(APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
