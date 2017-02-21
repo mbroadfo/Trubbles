@@ -64,7 +64,7 @@ class BlinkyStreamer(TwythonStreamer):
 				
 				# Print List Match Results, Send Action, & Play mp3
 				if aList != 0:
-					print colored('!!! ACTION ' + str(aList) + ' !!! - triggered by ' + aTrig + "[" + aCommand + "]", aColor)
+					print colored('!!! ACTION ' + str(aList) + ' !!! - triggered by ' + aTrig + "[" + aSound + "]", aColor)
 					ser.write(aCommand)
 					pygame.mixer.music.load("sounds/"+aSound)
 					pygame.mixer.music.play()
