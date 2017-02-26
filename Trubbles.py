@@ -37,7 +37,11 @@ class BlinkyStreamer(TwythonStreamer):
 				from1 = twitt.group(2)
 				body1 = twitt.group(3)
 				body1 = re.sub(r'http\S+','',body1)
-				body1 = re.sub('$amp;','&',body1)
+				body1 = re.sub('$amp;','and',body1)
+				body1 = re.sub('&amp;','and',body1)
+				body1 = re.sub('"','',body1)
+				body1 = re.sub('@','',body1)
+				body1 = re.sub('#','',body1)
 				aList = 0
 
 				if xList.has_key(from1):
@@ -73,8 +77,11 @@ class BlinkyStreamer(TwythonStreamer):
 		if ser.inWaiting() > 0:
 			btnChk = ser.read()
 			if btnChk == '1':
+				tlist.captureTweets(10)
 				tlist.releaseTweets(10)
+				tlist.clear()
 			if btnChk == '2':
+				tlist.captureTweets(100)
 				tlist.clear()
 		
 	def on_error(self, status_code, data):
@@ -94,27 +101,47 @@ class topTweets:
 		topTweets.tweetList = {}		# clear dictionary
 		topTweets.twitList = {}			# clear tweet library
 
-	def insTweet(self, fromer, bodyr, listr):
-		tweetr = fromer + ':' + bodyr
-		if topTweets.tweetList.has_key(tweetr):
-			topTweets.tweetList[tweetr][0] += 1
+	def insTweet(self, fromr, bodyr, listr):
+		if topTweets.tweetList.has_key(bodyr):
+			topTweets.tweetList[bodyr][0] += 1
 		else:
-			topTweets.tweetList[tweetr] = [1,listr]
-		return str(topTweets.tweetList[tweetr][0])
+			topTweets.tweetList[bodyr] = [1,fromr,listr]
+		return str(topTweets.tweetList[bodyr][0])
 
 	def releaseTweets(self,count):
 		i = 0
 		os.system( 'amixer -q set PCM -- 100%' )
 		print '!!! TOP ', str(count),' TWEETs !!!'
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
-			print "%s) %s/%s: %s" % (str(i+1), value[0], value[1], key)
-			if value[1] != '0':
+			print "%s) %s%s  %s" % (str(i+1), value[1], value[0], key)
+			if value[0] != 0:
 				os.system( 'flite -t "' + key + '"' )
 			i += 1
 			if i >= count:
 				break
 		print '---------------------------------------------------'
 		os.system( 'amixer -q set PCM -- 80%' )
+
+	def captureTweets(self,count):
+		i = 0
+		print '!!! CAPTURING TOP ', str(count),' TWEETs !!!'
+		sqlstmt = 'INSERT INTO tweetStore (listr,fromr,bodyr,countr) VALUES '
+		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
+			if i != 0: 
+				sqlstmt += ', '
+			sqlstmt += '(%d,"%s","%s",%d)' % (value[2],value[1],mariadb_connection.converter.escape(key),value[0])
+			i += 1
+			if i >= count:
+				break
+		if i != 0:
+			sqlstmt = sqlstmt + ' ON DUPLICATE KEY UPDATE countr = countr + VALUES(countr);'
+#			print "SQLSTMT = ",sqlstmt
+			cursor.execute(sqlstmt)
+			mariadb_connection.commit()
+			print str(i) + ' Tweets Stored'
+		else:
+			print 'No Tweets to Store'
+		print '---------------------------------------------------'
 
 # -------------------------------------------------------------------------------------------
 # Setup / Initialize
