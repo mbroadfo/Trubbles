@@ -63,8 +63,8 @@ class BlinkyStreamer(TwythonStreamer):
 				elif from1 != str.strip(from1):
 					print colored('! NEW TWEET !','blue')
 					reTwit = False
-				print 'FROM: ' + from1
-				print 'BODY: ' + body1
+				print from1
+				print ' ' + body1
 				
 				# Print List Match Results, Send Action, & Play mp3
 				if aList != 0:
@@ -123,6 +123,7 @@ class topTweets:
 		os.system( 'amixer -q set PCM -- 80%' )
 
 	def captureTweets(self,count):
+		mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
 		i = 0
 		print '!!! CAPTURING TOP ', str(count),' TWEETs !!!'
 		sqlstmt = 'INSERT INTO tweetStore (listr,fromr,bodyr,countr) VALUES '
@@ -136,12 +137,14 @@ class topTweets:
 		if i != 0:
 			sqlstmt = sqlstmt + ' ON DUPLICATE KEY UPDATE countr = countr + VALUES(countr);'
 #			print "SQLSTMT = ",sqlstmt
+			cursor = mariadb_connection.cursor(buffered=True)
 			cursor.execute(sqlstmt)
 			mariadb_connection.commit()
 			print str(i) + ' Tweets Stored'
 		else:
 			print 'No Tweets to Store'
 		print '---------------------------------------------------'
+		mariadb_connection.close()
 
 # -------------------------------------------------------------------------------------------
 # Setup / Initialize
@@ -177,6 +180,8 @@ for mList, mActor, mCommand, mColor, mSound in cursor:
 	xCommand[mActor] = mCommand
 	xColor[mActor] = mColor
 	xSound[mActor] = mSound
+
+mariadb_connection.close()
 
 # Setup Serial IO to Arduino
 ser = serial.Serial('/dev/ttyACM0',115200)
