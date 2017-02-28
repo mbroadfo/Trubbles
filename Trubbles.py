@@ -1,8 +1,13 @@
 #!/usr/bin/python
 import time, re, pygame, serial, os
 import mysql.connector as mariadb
+from gtts import gTTS
 from twython import TwythonStreamer
 from termcolor import colored
+
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
 print colored('-----------','yellow')
 print colored('hello', 'red'), colored('world', 'blue')
@@ -81,9 +86,13 @@ class BlinkyStreamer(TwythonStreamer):
 				tlist.releaseTweets(10)
 				tlist.clear()
 			if btnChk == '2':
-				tlist.captureTweets(100)
-				tlist.clear()
-		
+				tlist.retrieveTweets(10)
+
+		if time.time() > (tlist.lastTimer + tlist.capDelay):
+			tlist.captureTweets(50)
+			tlist.clear()
+			tlist.lastTimer = time.time()
+
 	def on_error(self, status_code, data):
 		print 'ERR:' + str(status_code)
 
@@ -94,6 +103,8 @@ class topTweets:
 	def __init__ (self):
 		topTweets.tweetList = {}		# initialize dictionary
 		topTweets.twitList = {}			# initialize tweet library
+		topTweets.capDelay = 600		# default capture delay (sec)
+		topTweets.lastTimer = time.time()
 
 	def clear(self):
 		print '** Tweet List Cleared **'
@@ -111,10 +122,14 @@ class topTweets:
 	def releaseTweets(self,count):
 		i = 0
 		os.system( 'amixer -q set PCM -- 100%' )
-		print '!!! TOP ', str(count),' TWEETs !!!'
+		print '!!! PLAYING LATEST TOP', str(count),'TWEETs !!!'
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
-			print "%s) %s%s  %s" % (str(i+1), value[1], value[0], key)
+			print "%s) %s[%s] %s %s" % (str(i+1),str(value[0]),str(value[2]),str(value[1]), str(key))
 			if value[0] != 0:
+#				tts = gTTS(text=key, lang='en')
+#				tts.save('sounds/~temp.mp3')
+#				pygame.mixer.music.load('sounds/~temp.mp3')
+#				pygame.mixer.music.play()
 				os.system( 'flite -t "' + key + '"' )
 			i += 1
 			if i >= count:
@@ -124,13 +139,14 @@ class topTweets:
 
 	def captureTweets(self,count):
 		mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
+		os.system( 'amixer -q set PCM -- 100%' )
 		i = 0
-		print '!!! CAPTURING TOP ', str(count),' TWEETs !!!'
+		print '!!! CAPTURING LATEST TOP', str(count),'TWEETs !!!'
 		sqlstmt = 'INSERT INTO tweetStore (listr,fromr,bodyr,countr) VALUES '
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
 			if i != 0: 
 				sqlstmt += ', '
-			sqlstmt += '(%d,"%s","%s",%d)' % (value[2],value[1],mariadb_connection.converter.escape(key),value[0])
+			sqlstmt += '(%s,"%s","%s",%s)' % (str(i+1),str(value[1]),str(mariadb_connection.converter.escape(key)),str(value[0]))
 			i += 1
 			if i >= count:
 				break
@@ -144,6 +160,25 @@ class topTweets:
 		else:
 			print 'No Tweets to Store'
 		print '---------------------------------------------------'
+		mariadb_connection.close()
+
+	def retrieveTweets(self,count):
+		print '!!! PLAYING ALL-TIME TOP', str(count),'TWEETs !!!'
+		i = 0
+		mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
+		cursor = mariadb_connection.cursor(buffered=True)
+		sqlstmt = "SELECT countr, fromr, bodyr, listr FROM tweetStore ORDER BY 1 DESC LIMIT %s;" % count
+#		print sqlstmt
+		cursor.execute(sqlstmt)
+		for rCountr, rFromr, rBodyr, rListr in cursor:
+			print "%s) %s[%s] %s %s" % (str(i+1),str(rCountr), str(rListr), str(rFromr),str(rBodyr))
+			if rCountr != 0:
+				os.system( 'flite -t "' + rBodyr + '"' )
+			i += 1
+			if i >= count:
+				break
+		print '---------------------------------------------------'
+		os.system( 'amixer -q set PCM -- 80%' )
 		mariadb_connection.close()
 
 # -------------------------------------------------------------------------------------------
@@ -188,6 +223,7 @@ ser = serial.Serial('/dev/ttyACM0',115200)
 
 # Main Loop
 running = True
+
 while running:
 	# Create Streamer
 	try:
