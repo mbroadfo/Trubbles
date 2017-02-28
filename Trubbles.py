@@ -142,16 +142,16 @@ class topTweets:
 		os.system( 'amixer -q set PCM -- 100%' )
 		i = 0
 		print '!!! CAPTURING LATEST TOP', str(count),'TWEETs !!!'
-		sqlstmt = 'INSERT INTO tweetStore (listr,fromr,bodyr,countr) VALUES '
+		sqlstmt = 'INSERT INTO tweetStore (listr,fromr,bodyr,countr,createDate) VALUES '
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
 			if i != 0: 
 				sqlstmt += ', '
-			sqlstmt += '(%s,"%s","%s",%s)' % (str(i+1),str(value[1]),str(mariadb_connection.converter.escape(key)),str(value[0]))
+			sqlstmt += '(%s,"%s","%s",%s,CURRENT_TIMESTAMP)' % (str(i+1),str(value[1]),str(mariadb_connection.converter.escape(key)),str(value[0]))
 			i += 1
 			if i >= count:
 				break
 		if i != 0:
-			sqlstmt = sqlstmt + ' ON DUPLICATE KEY UPDATE countr = countr + VALUES(countr);'
+			sqlstmt = sqlstmt + ' ON DUPLICATE KEY UPDATE countr = countr + VALUES(countr), updateDate = CURRENT_TIMESTAMP;'
 #			print "SQLSTMT = ",sqlstmt
 			cursor = mariadb_connection.cursor(buffered=True)
 			cursor.execute(sqlstmt)
