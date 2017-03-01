@@ -51,7 +51,6 @@ class BlinkyStreamer(TwythonStreamer):
 
 				if xList.has_key(from1):
 					aList = xList[from1]
-					actionType = xList[from1]
 					aCommand = xCommand[from1]
 					aColor = xColor[from1]
 					aSound = xSound[from1]
@@ -74,23 +73,27 @@ class BlinkyStreamer(TwythonStreamer):
 				# Print List Match Results, Send Action, & Play mp3
 				if aList != 0:
 					print colored('!!! ACTION ' + str(aList) + ' !!! - triggered by ' + aTrig + "[" + aSound + "]", aColor)
-					ser.write(aCommand)
+					ser.write(aCommand)				# send the action
 					pygame.mixer.music.load("sounds/"+aSound)
-					pygame.mixer.music.play()
+					pygame.mixer.music.play()			# play the sound
+				tlist.insHeatMap(aList)				# capture heat map
 				print '----------------------------------------------'
 
 		if ser.inWaiting() > 0:
 			btnChk = ser.read()
 			if btnChk == '1':
 				tlist.captureTweets(10)
+				tlist.displayHeatMap()
 				tlist.releaseTweets(10)
 				tlist.clear()
 			if btnChk == '2':
+				tlist.retrieveHeatMap()
 				tlist.retrieveTweets(10)
 
 		if time.time() > (tlist.lastTimer + tlist.capDelay):
 			tlist.captureTweets(50)
 			tlist.clear()
+			tlist.displayHeatMap()
 			tlist.lastTimer = time.time()
 
 	def on_error(self, status_code, data):
@@ -105,6 +108,7 @@ class topTweets:
 		topTweets.twitList = {}			# initialize tweet library
 		topTweets.capDelay = 600		# default capture delay (sec)
 		topTweets.lastTimer = time.time()
+		topTweets.heatMap = {}			# initialize heat map
 
 	def clear(self):
 		print '** Tweet List Cleared **'
@@ -168,7 +172,6 @@ class topTweets:
 		mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
 		cursor = mariadb_connection.cursor(buffered=True)
 		sqlstmt = "SELECT countr, fromr, bodyr, listr FROM tweetStore ORDER BY 1 DESC LIMIT %s;" % count
-#		print sqlstmt
 		cursor.execute(sqlstmt)
 		for rCountr, rFromr, rBodyr, rListr in cursor:
 			print "%s) %s[%s] %s %s" % (str(i+1),str(rCountr),str(rListr), str(rFromr),str(rBodyr))
@@ -179,6 +182,32 @@ class topTweets:
 				break
 		print '---------------------------------------------------'
 		os.system( 'amixer -q set PCM -- 80%' )
+		mariadb_connection.close()
+
+	def insHeatMap(self, listn):
+		if topTweets.heatMap.has_key(listn):
+			topTweets.heatMap[listn] += 1
+		else:
+			topTweets.heatMap[listn] = 1
+		return str(topTweets.heatMap[listn])
+
+	def displayHeatMap(self):
+		print '! Current Heat Map !'
+		for key, value in sorted(topTweets.heatMap.items(), key = lambda (k,v): (k,v), reverse = False):
+			print str(key) + ') ' + str(value)
+		print '---------------------------------------------------'
+
+	def retrieveHeatMap(self):
+		print '! All-TIME HEAT MAP !'
+		i = 0
+		mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
+		cursor = mariadb_connection.cursor(buffered=True)
+		sqlstmt = "SELECT listr, SUM(countr) FROM tweetStore GROUP  BY 1 ORDER BY 1;"
+#		print sqlstmt
+		cursor.execute(sqlstmt)
+		for listc, countc in cursor:
+			print "%s) %s" % (str(listc),str(countc))
+		print '---------------------------------------------------'
 		mariadb_connection.close()
 
 # -------------------------------------------------------------------------------------------
