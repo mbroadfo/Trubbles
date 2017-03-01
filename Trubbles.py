@@ -21,6 +21,13 @@ print colored('-----------','yellow')
 #               ['4','@FoxNews','@foxheadlines','@foxnewsalert','@seanhannity','@oreillyfactor','@foxandfriends','@LouDobbs'])
 #actionColor = ['red','yellow','magenta','cyan']
 
+''' Hi John - here's how you access our mariadb tables:
+	mysql -p [enter password]
+	use Trubbles;
+	show tables;
+enjoy'''
+
+
 # Twitter application authentication
 APP_KEY = 'idd0G91xrCTttBBRiEDtxGEry'
 APP_SECRET = '3e8ZhY1RmaWPHsc6mJgwMA7IxbgPB2J2WknDyebSVo9sbxHmiQ'
