@@ -146,7 +146,7 @@ class topTweets:
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
 			if i != 0: 
 				sqlstmt += ', '
-			sqlstmt += '(%s,"%s","%s",%s,CURRENT_TIMESTAMP)' % (str(i+1),str(value[1]),str(mariadb_connection.converter.escape(key)),str(value[0]))
+			sqlstmt += '(%s,"%s","%s",%s,CURRENT_TIMESTAMP)' % (str(value[2]),str(value[1]),str(mariadb_connection.converter.escape(key)),str(value[0]))
 			i += 1
 			if i >= count:
 				break
@@ -171,7 +171,7 @@ class topTweets:
 #		print sqlstmt
 		cursor.execute(sqlstmt)
 		for rCountr, rFromr, rBodyr, rListr in cursor:
-			print "%s) %s[%s] %s %s" % (str(i+1),str(rCountr), str(rListr), str(rFromr),str(rBodyr))
+			print "%s) %s[%s] %s %s" % (str(i+1),str(rCountr),str(rListr), str(rFromr),str(rBodyr))
 			if rCountr != 0:
 				os.system( 'flite -t "' + rBodyr + '"' )
 			i += 1
