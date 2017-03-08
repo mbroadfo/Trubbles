@@ -104,7 +104,7 @@ class BlinkyStreamer(TwythonStreamer):
 			tlist.lastTimer = time.time()
 
 	def on_error(self, status_code, data):
-		print 'ERR:' + str(status_code)
+		print 'Tweet Stream Error:' + str(status_code) + ' ' + str(data)
 
 # -------------------------------------------------------------------------
 
@@ -163,15 +163,17 @@ class topTweets:
 				break
 		if i != 0:
 			sqlstmt = sqlstmt + ' ON DUPLICATE KEY UPDATE countr = countr + VALUES(countr), updateDate = CURRENT_TIMESTAMP;'
-#			print "SQLSTMT = ",sqlstmt
-			cursor = mariadb_connection.cursor(buffered=True)
-			cursor.execute(sqlstmt)
-			mariadb_connection.commit()
+			try:
+				cursor = mariadb_connection.cursor(buffered=True)
+				cursor.execute(sqlstmt)
+				mariadb_connection.commit()
+			except mariadb.connection.Error as err:
+				print("SQL Error %s: %s" % (str(format(err)),str(sqlstmt)))
 			print str(i) + ' Tweets Stored'
 		else:
 			print 'No Tweets to Store'
-		print '---------------------------------------------------'
 		mariadb_connection.close()
+		print '---------------------------------------------------'
 
 	def retrieveTweets(self,count):
 		print '!!! PLAYING ALL-TIME TOP', str(count),'TWEETs !!!'
@@ -262,6 +264,7 @@ running = True
 
 while running:
 	# Create Streamer
+	print 'Creating Streamer...'
 	try:
 		stream = BlinkyStreamer(APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
 		stream.statuses.filter(track=TERMS)
