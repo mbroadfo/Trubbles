@@ -274,7 +274,7 @@ while running:
 		print colored('Goodbye.','cyan')
 		print colored('-----------','yellow')
 	except Exception as e:
-		print 'ERROR: ' + str(e)
+		print 'STREAMER ERROR: ' + str(e)
 		continue
 	
 
