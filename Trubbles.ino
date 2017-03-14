@@ -308,81 +308,55 @@ class NeoPatterns : public Adafruit_NeoPixel {
     }
 };
 // ################################################################
-class Flasher {
+class Blinker {
   public:
-  int ledPin;      // the number of the LED pin
-  long OnTime;     // milliseconds of on-time
-  long OffTime;    // milliseconds of off-time
-  int Duration;    // number of seconds to flash
-  bool runMode;    // Whether the Flasher is running or not
-
-  // These maintain the current state
-  volatile int ledState;                     // ledState used to set the LED
-  volatile unsigned long lastUpdate;    // last update of position
-  volatile unsigned long currentMillis; // current ms counter
-  volatile unsigned long totalMillis;   // total ms display has been running
-
-  // Constructor - creates a Flasher and initializes the member variables and state
+    int ledPin;     // the pin for the LED
+    long onTime;    // ms for on-time
+    bool runMode;    // Whether Blinker is running or not
+  
+    // Current State Variables
+    volatile int brightness;                // current brightness level
+    volatile unsigned long startTime;       // last ms updated
+    volatile unsigned long currentMillis;   // current ms counter
+    volatile unsigned long totalTime;       // total ms counter
+  
+  // Constructor - creates a Blinker and initialized member variables and state
   public:
-  Flasher(int pin, long on, long off) {
-    ledPin = pin;
-    pinMode(ledPin, OUTPUT);     
-    OnTime = on;
-    OffTime = off;
-    ledState = LOW; 
-    lastUpdate = 0;
-    runMode = false;
-  }
-
+    Blinker(int pin) {
+      ledPin = pin;
+      pinMode(ledPin, OUTPUT);
+      runMode = false;
+      totalTime = 0;
+    }
+  
   void Update() {
-      currentMillis = millis();
-      
-      if(runMode == true and ledState == HIGH and (currentMillis - lastUpdate) > OnTime) { 
-          totalMillis += (currentMillis - lastUpdate);
-          if (totalMillis > (Duration * 1000)) {
-            endDisp();
+      if(runMode == true) {
+          currentMillis = millis();
+          totalTime = currentMillis - startTime;
+          if(totalTime > onTime) {
+              endDisp();
           }
           else {
-            lastUpdate = currentMillis;
-            if(ledState == HIGH) {
-              ledState = LOW;  // Turn it off
-              lastUpdate = currentMillis;  // Remember the time
-              digitalWrite(ledPin, ledState);  // Update the actual LED
-            }
+              brightness = int(255 * (1.0 - float(totalTime) / float(onTime)));
           }
+          Serial.println("Brightness: " + String(brightness) + " totalTime = " + String(totalTime));
+          analogWrite(ledPin,brightness);
       }
-      else if(runMode == true and ledState == LOW and (currentMillis - lastUpdate) > OffTime) {  
-          totalMillis += (currentMillis - lastUpdate);
-          if (totalMillis > (Duration * 1000)) {
-            endDisp();
-          }
-          else {
-            lastUpdate = currentMillis;
-            if (ledState == LOW) {
-              ledState = HIGH;  // turn it on
-              lastUpdate = currentMillis;   // Remember the time
-              digitalWrite(ledPin, ledState);   // Update the actual LED
-            }
-          }
-      }
-  }
-
-  // Start the Flasher
-  void startDisp(uint8_t dur) {
-    Duration = dur;
-    runMode = true;
-    lastUpdate = millis();
-    totalMillis = 0;
-    ledState = HIGH;    // turn it on
-//    Serial.println("Start Flasher at "+String(lastUpdate)+" for "+String(Duration)+" secs");
   }
   
-  // End the Flasher
+  void startDisp(int on) {
+    onTime = on;
+    runMode = true;
+    startTime = millis();
+    brightness = 255;
+    Serial.println("Start Blinker on pin "+String(ledPin)+" for "+String(onTime)+" milliseconds");
+  }
+  
+  // End the Blinker
   void endDisp() {
     runMode = false;
-    ledState = LOW;  // turn it off
-    digitalWrite(ledPin, ledState);   // Update the actual LED
-//    Serial.println("Ended Flasher");
+    brightness = 0;
+    Serial.println("Ended Blinker");
   }
 };
 
@@ -390,7 +364,8 @@ class Flasher {
 class Sweeper {
   public:
   Servo servo;              // the servo
-  int  updateInterval;      // interval between updates
+  int pinOut;               // the control pin
+  int updateInterval;       // interval between updates
   int Duration;             // number of seconds to sweep
   bool runMode;             // Whether we are running the Sweeper or not
   
@@ -401,18 +376,20 @@ class Sweeper {
   volatile unsigned long totalMillis;     // will store the total ms run so far
 
 public: 
-  Sweeper(int interval) {
-    updateInterval = interval;
+  Sweeper(int pin) {
+    pinOut = pin;
     increment = 1;
     runMode = false;
   }
   
-  void Attach(int pin) {
-    servo.attach(pin);
+  void Attach() {
+    servo.attach(pinOut);
+    Serial.println("Sweeper Attached to pin " + String(pinOut));
   }
   
   void Detach() {
     servo.detach();
+    Serial.println("Sweeper Detached from pin " + String(pinOut));
   }
   
   void reset() {
@@ -441,28 +418,30 @@ public:
   }
   
   // Start the Sweeper
-  void startDisp(uint8_t dur) {
+  void startDisp(uint8_t dur,uint8_t interval) {
     Duration = dur;
+    updateInterval = interval;
     runMode = true;
     lastUpdate = millis();
     totalMillis = 0;
-//    Serial.println("Start Sweeper at "+String(lastUpdate)+" for "+String(Duration)+" secs");
+    Serial.println("Start Sweeper at "+String(lastUpdate)+" for "+String(Duration)+" secs with " + String(interval) + " interval");
   }
   
   // End the Sweeper
   void endDisp() {
       runMode = false;
       reset();
-//      Serial.println("Ended Sweeper");
+      Detach();
+    Serial.println("Sweeper endeded at "+String(lastUpdate));
   }
 };
 
 // ################################################################
 // Create Action Objects 
-Flasher led1(10, 123, 400);
+Blinker led1(10);
 
-Sweeper sweeper1(4);
-Sweeper sweeper2(6);
+Sweeper sweeper1(3);
+Sweeper sweeper2(5);
 
 // Setup NeoPixels
 void Thing1Complete();
@@ -495,10 +474,6 @@ void setup() {
   pinMode(but2, INPUT_PULLUP);
 
   Serial.begin(115200);
-
-  // Attach the Servos
-  sweeper1.Attach(3);
-  sweeper2.Attach(5);
 
   // Initialize all the Things
   Thing1.begin();
@@ -573,16 +548,21 @@ void loop() {
         Thing5.startDisp(7);
       }
       else if (rx == 'e') {
-        sweeper1.startDisp(4);
+        sweeper1.Attach();
+        sweeper1.startDisp(4,4);
       }
       else if (rx == 'f') {
-        sweeper2.startDisp(6);
+        sweeper2.Attach();
+        sweeper2.startDisp(6,5);
       }
       else if (rx == 'g') {
-        led1.startDisp(8);
+        sweeper1.Attach();
+        sweeper2.Attach();
+        sweeper1.startDisp(4,6);
+        sweeper2.startDisp(6,4);
       }
       else if (rx == 'h') {
-        led1.startDisp(8);
+        led1.startDisp(600);
       }
     }
     
