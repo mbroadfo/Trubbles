@@ -339,7 +339,7 @@ class Blinker {
           else {
               brightness = int(255 * (1.0 - float(totalTime) / float(onTime)));
           }
-          Serial.println("Brightness: " + String(brightness) + " totalTime = " + String(totalTime));
+//          Serial.println("Brightness: " + String(brightness) + " totalTime = " + String(totalTime));
           analogWrite(ledPin,brightness);
       }
   }
@@ -349,36 +349,37 @@ class Blinker {
     runMode = true;
     startTime = millis();
     brightness = 255;
-    Serial.println("Start Blinker on pin "+String(ledPin)+" for "+String(onTime)+" milliseconds");
+//    Serial.println("Start Blinker on pin "+String(ledPin)+" for "+String(onTime)+" milliseconds");
   }
   
   // End the Blinker
   void endDisp() {
     runMode = false;
     brightness = 0;
-    Serial.println("Ended Blinker");
+//    Serial.println("Ended Blinker");
   }
 };
 
 // ################################################################
 class Sweeper {
   public:
-  Servo servo;              // the servo
+  Servo servo;              // the servo class
   int pinOut;               // the control pin
   int updateInterval;       // interval between updates
-  int Duration;             // number of seconds to sweep
+  int iterations;           // number of times to sweep
   bool runMode;             // Whether we are running the Sweeper or not
   
   volatile int pos;                       // current servo position 
-  volatile unsigned long lastUpdate;      // last update of position
+  volatile int turns;                     // current number of turns taken
   volatile int increment;                 // increment to move for each interval
+  volatile unsigned long lastUpdate;      // last ms update of position
   volatile unsigned long currentMillis;   // will store the current ms
-  volatile unsigned long totalMillis;     // will store the total ms run so far
 
 public: 
   Sweeper(int pin) {
     pinOut = pin;
     increment = 1;
+    turns = 0;
     runMode = false;
   }
   
@@ -388,7 +389,7 @@ public:
   }
   
   void Detach() {
-    servo.detach();
+    servo.detach(pinOut);
     Serial.println("Sweeper Detached from pin " + String(pinOut));
   }
   
@@ -398,33 +399,36 @@ public:
     increment = abs(increment);
   }
   
-  void Update() {
-      currentMillis = millis();
-      // Is it time to update yet?
-      if(runMode == true and (currentMillis - lastUpdate) > updateInterval) {  
-          totalMillis += (currentMillis - lastUpdate);
-          if (totalMillis > (Duration * 1000)) {
-            endDisp();
-          }
-          else {
-            lastUpdate = currentMillis;
-            pos += increment;
-            servo.write(pos);
-            if ((pos >= 180) || (pos <= 90)) {   // end of sweep = reverse direction
-              increment = -increment;
-            }
-          }
-      }
-  }
-  
   // Start the Sweeper
-  void startDisp(uint8_t dur,uint8_t interval) {
-    Duration = dur;
+  void startDisp(int iters, int interval) {
+    iterations = iters;
     updateInterval = interval;
     runMode = true;
     lastUpdate = millis();
-    totalMillis = 0;
-    Serial.println("Start Sweeper at "+String(lastUpdate)+" for "+String(Duration)+" secs with " + String(interval) + " interval");
+    Serial.println("Start Sweeper on pin "+String(pinOut)+" at "+String(lastUpdate)+" for "+String(iterations)+" iterations with " + String(updateInterval) + " ms intervals");
+  }
+  
+  void Update() {
+      if(runMode == true ) {
+          if(turns >= iterations) {
+              endDisp();
+          }
+          else {
+              currentMillis = millis();
+              if ((currentMillis - lastUpdate) > updateInterval) {
+                  lastUpdate = currentMillis;
+                  pos += increment;
+                  servo.write(pos);
+                  if(pos >= 135 || pos <= 0) {
+                      increment = -increment;
+                  }
+                  if(pos <= 0) { 
+                      turns++;
+                      Serial.println("Turns Completed = " + String(turns));
+                  }
+              }
+          }
+      }
   }
   
   // End the Sweeper
