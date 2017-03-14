@@ -11,23 +11,34 @@ class NeoPatterns : public Adafruit_NeoPixel {
     public:
     // Member Variables:  
     pattern  ActivePattern;   // which pattern is running
-    direction Direction;      // direction to run the pattern    
+    direction Direction;      // direction to run the pattern
+    uint16_t duration;        // duration to run the pattern    
     unsigned long Interval;   // milliseconds between updates
     unsigned long lastUpdate; // last update of position
+    volatile unsigned long totalMillis;     //  total ms display has been running
+    bool runMode;             // Whether we are running the pattern or not
     uint32_t Color1, Color2;  // What colors are in use
     uint16_t TotalSteps;      // total number of steps in the pattern
     uint16_t Index;           // current step within the pattern    
     void (*OnComplete)();     // Callback on completion of pattern
     
     // Constructor - calls base-class constructor to initialize strip
-    NeoPatterns(uint16_t pixels, uint8_t pin, uint8_t type, void (*callback)())
+    NeoPatterns(uint16_t pixels, uint8_t pin, uint8_t type, void (*callback)(), uint8_t dur)
     :Adafruit_NeoPixel(pixels, pin, type) {
         OnComplete = callback;
+        dur = duration;
     }
     
     // Update the pattern
     void Update() {
-        if((millis() - lastUpdate) > Interval) {    // time to update
+
+        if(runMode = true and (millis() - lastUpdate) > Interval) {    // time to update
+            totalMillis += (millis() - lastUpdate);
+            if ((totalMillis > duration * 1000) and duration == -1) {
+              runMode = false;
+            }
+        }
+        else {
             lastUpdate = millis();
             switch(ActivePattern) {
                 case RAINBOW_CYCLE:
@@ -458,10 +469,10 @@ void Thing1Complete();
 void Thing2Complete();
 void Thing3Complete();
 void Thing4Complete();
-NeoPatterns Thing1(35, 10, NEO_GRB + NEO_KHZ800, &Thing1Complete);
-NeoPatterns Thing2(12, 3, NEO_GRB + NEO_KHZ800, &Thing2Complete);
-NeoPatterns Thing3(8, 4, NEO_GRB + NEO_KHZ800, &Thing3Complete);
-NeoPatterns Thing4(8, 5, NEO_GRB + NEO_KHZ800, &Thing4Complete);
+NeoPatterns Thing1(35, 10, NEO_GRB + NEO_KHZ800, &Thing1Complete,10);
+NeoPatterns Thing2(12, 3, NEO_GRB + NEO_KHZ800, &Thing2Complete,10);
+NeoPatterns Thing3(8, 4, NEO_GRB + NEO_KHZ800, &Thing3Complete,10);
+NeoPatterns Thing4(8, 5, NEO_GRB + NEO_KHZ800, &Thing4Complete,10);
 //NeoPix strip1(35, 10, NEO_GRB + NEO_KHZ800);
 //NeoPix strip2(12, 3, NEO_GRB + NEO_KHZ800);
 //NeoPix strip3(8, 4, NEO_GRB + NEO_KHZ800);
