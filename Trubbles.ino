@@ -478,20 +478,23 @@ NeoPatterns Thing5(8, 15, NEO_GRB + NEO_KHZ800, &Thing5Complete);
 
 int but1,butState1,butPrev1;
 int but2,butState2,butPrev2;
-long duration, debounce;
+long currTime, timer1, timer2, debounce;
 
 
 // ################################################################
 // Setup
 void setup() { 
-  but1 = 14;
-  butState1, butState2, butPrev1, butPrev2 = LOW;
-  but2 = 16;
-
-  Serial.begin(115200);
   // Setup Buttons
+  debounce = 50;
+  but1 = 14;
+  butState1, butPrev1 = HIGH;
+  timer1, timer2 = 0;
+  but2 = 16;
+  butState2, butPrev2 = HIGH;
   pinMode(but1, INPUT_PULLUP);
   pinMode(but2, INPUT_PULLUP);
+
+  Serial.begin(115200);
 
   // Attach the Servos
   sweeper1.Attach(3);
@@ -606,15 +609,32 @@ void loop() {
         Thing4.Scanner(Thing1.Color(255,0,0), 55);
       }
     }
-
     
-    if (digitalRead(but1) == LOW) {
+    butState1 = digitalRead(but1);
+    butState2 = digitalRead(but2);
+    currTime = millis();
+    Serial.println("but1="+String(butState1)+" but2="+butState2);
+
+    if (butState1 == LOW && butPrev1 == HIGH && (currTime - timer1 > debounce)) {
+      butPrev1 = butState1;
+      timer1 = millis();
+    }
+    if (butState1 == HIGH && butPrev1 == LOW && (currTime - timer1 > debounce)) {
+      butPrev1 = butState1;
+      timer1 = millis();
       Serial.write("1");
     }
 
-   if (digitalRead(but2) == LOW) {
+    if (butState2 == LOW && butPrev2 == HIGH && (currTime - timer2 > debounce)) {
+      butPrev2 = butState2;
+      timer2 = millis();
+    }
+    if (butState2 == HIGH && butPrev2 == LOW && (currTime - timer2 > debounce)) {
+      butPrev2 = butState2;
+      timer2 = millis();
       Serial.write("2");
     }
+
 
     // Update the things.
     Thing1.Update();
