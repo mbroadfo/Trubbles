@@ -2,66 +2,92 @@
 #include <Adafruit_NeoPixel.h>
 
 // Pattern types supported:
-enum  pattern { NONE, RAINBOW_CYCLE, THEATER_CHASE, COLOR_WIPE, SCANNER, FADE };
+enum  pattern { NONE, RAINBOW_CYCLE, THEATER_CHASE, COLOR_WIPE, SCANNER, FADE , PATRIOT};
 // Patern directions supported:
 enum  direction { FORWARD, REVERSE };
 
+// ################################################################
 // NeoPattern Class - derived from the Adafruit_NeoPixel class
 class NeoPatterns : public Adafruit_NeoPixel {
     public:
     // Member Variables:  
-    pattern  ActivePattern;   // which pattern is running
-    direction Direction;      // direction to run the pattern
-    uint16_t duration;        // duration to run the pattern    
-    unsigned long Interval;   // milliseconds between updates
-    unsigned long lastUpdate; // last update of position
-    volatile unsigned long totalMillis;     //  total ms display has been running
-    bool runMode;             // Whether we are running the pattern or not
-    uint32_t Color1, Color2;  // What colors are in use
-    uint16_t TotalSteps;      // total number of steps in the pattern
-    uint16_t Index;           // current step within the pattern    
-    void (*OnComplete)();     // Callback on completion of pattern
+    pattern  ActivePattern;               // which pattern is running
+    direction Direction;                  // direction to run the pattern
+    uint16_t Duration;                    // duration to run the pattern    
+    unsigned long Interval;               // milliseconds between updates
+    volatile unsigned long lastUpdate;    // last update of position
+    volatile unsigned long currentMillis; // current ms counter
+    volatile unsigned long totalMillis;   // total ms display has been running
+    bool runMode;                         // Whether we are running the pattern or not
+    uint32_t Color1, Color2;              // What colors are in use
+    int DispLength;                       // Length of Display Pixels in PATRIOT
+    uint16_t TotalSteps;                  // total number of steps in the pattern
+    uint16_t Index;                       // current step within the pattern    
+    void (*OnComplete)();                 // Callback on completion of pattern
     
     // Constructor - calls base-class constructor to initialize strip
-    NeoPatterns(uint16_t pixels, uint8_t pin, uint8_t type, void (*callback)(), uint8_t dur)
+    NeoPatterns(uint16_t pixels, uint8_t pin, uint8_t type, void (*callback)())
     :Adafruit_NeoPixel(pixels, pin, type) {
+        runMode = false;
         OnComplete = callback;
-        dur = duration;
     }
     
     // Update the pattern
     void Update() {
-
-        if(runMode = true and (millis() - lastUpdate) > Interval) {    // time to update
-            totalMillis += (millis() - lastUpdate);
-            if ((totalMillis > duration * 1000) and duration == -1) {
-              runMode = false;
+        currentMillis = millis();
+        // Is it time to update yet?
+        if(runMode == true and (currentMillis - lastUpdate) > Interval) {    // time to update
+            totalMillis += (currentMillis - lastUpdate);
+            if (totalMillis > (Duration * 1000)) {
+              endDisp();
             }
-        }
-        else {
-            lastUpdate = millis();
-            switch(ActivePattern) {
-                case RAINBOW_CYCLE:
-                    RainbowCycleUpdate();
-                    break;
-                case THEATER_CHASE:
-                    TheaterChaseUpdate();
-                    break;
-                case COLOR_WIPE:
-                    ColorWipeUpdate();
-                    break;
-                case SCANNER:
-                    ScannerUpdate();
-                    break;
-                case FADE:
-                    FadeUpdate();
-                    break;
-                default:
-                    break;
+            else {
+                lastUpdate = currentMillis;
+                switch(ActivePattern) {
+                    case RAINBOW_CYCLE:
+                        RainbowCycleUpdate();
+                        break;
+                    case THEATER_CHASE:
+                        TheaterChaseUpdate();
+                        break;
+                    case COLOR_WIPE:
+                        ColorWipeUpdate();
+                        break;
+                    case SCANNER:
+                        ScannerUpdate();
+                        break;
+                    case FADE:
+                        FadeUpdate();
+                        break;
+                    case PATRIOT:
+                        PatriotUpdate();
+                        break;
+                    default:
+                        break;
+                }
             }
         }
     }
   
+    // Start the Display
+    void startDisp(uint8_t dur) {
+      Duration = dur;
+      runMode = true;
+      lastUpdate = millis();
+      totalMillis = 0;
+//      Serial.println("Start Display at "+String(lastUpdate)+" for "+String(Duration)+" secs");
+    }
+    
+    // End the Display
+    void endDisp() {
+        runMode = false;
+        for(int i=0; i< numPixels(); i++) {
+            setPixelColor(i, Color(0,0,0));
+        }
+        show();
+//      Serial.println("Ended Display");
+    }
+
     // Increment the Index and reset at the end
     void Increment() {
         if (Direction == FORWARD) {
@@ -133,6 +159,34 @@ class NeoPatterns : public Adafruit_NeoPixel {
             }
             else {
                 setPixelColor(i, Color2);
+            }
+        }
+        show();
+        Increment();
+    }
+
+    // Initialize for a Patriot Display
+    void Patriot(uint8_t dlen, uint8_t interval, direction dir = FORWARD) {
+        ActivePattern = PATRIOT;
+        DispLength = dlen;        // Length of the Display
+        Interval = interval;      // ms to check for updates
+        TotalSteps = numPixels(); 
+        Index = 0;
+        Direction = dir;
+   }
+    
+    // Update the Theater Chase Pattern
+    void PatriotUpdate() {
+        for(int i=0; i< numPixels(); i++) {
+            int idx = (i+Index) / DispLength;
+            if ((idx) % 3 == 0) {
+                setPixelColor(i, Color(255,0,0)); // Red
+            }
+            else if ((idx-1) % 3 == 0) {
+                setPixelColor(i,Color(255,255,255));  // White
+            }
+            else {
+                setPixelColor(i, Color(0,0,255)); // Blue
             }
         }
         show();
@@ -253,210 +307,157 @@ class NeoPatterns : public Adafruit_NeoPixel {
         }
     }
 };
-// ####################################################################################
-// ####################################################################################
-class NeoPix : public Adafruit_NeoPixel {
-  // Class Member Variables - initialized at startup
-  long CheckTime;  // ms between updates
-  long OnTime;     // Total Display Time
-  String neoDisp;   // Display Type  
-  // Current State Variables
-  volatile unsigned long previousMillis;  // last time we checked
-  volatile unsigned long totalMillis;     //  total ms display has been running
-  volatile bool runMode;                  //  whether Neo Display still running
-  volatile int x,y;                       // generic counters within NeoPix
-  
-  // Constructor - Creates a NeoPix & Initialized Variables & State
+// ################################################################
+class Flasher {
   public:
-  NeoPix(uint16_t pix, uint8_t pin, uint8_t nflag) : Adafruit_NeoPixel(pix, pin, nflag) {
-    pinMode(pin, OUTPUT);
-   runMode = false;   // start running when created
-  }
-
-  void kickOff(long currMs, long ctime, long otime, String ndisp) {
-    previousMillis = currMs; // Current ms Timer
-    CheckTime = ctime;       // ms between updates
-    OnTime = otime;          // Total Display Time in sec
-    neoDisp = ndisp;         // Display Type
-    totalMillis = 0;         // Clear Total Display Timer
-    x = 0;                   // Generic Counter
-    y = 0;                   // 2nd Generic Counter
-    runMode = true;          // Turn It On
-  }
-
-  void turnOff() {
-    for (int i = 0; i<numPixels(); i++) {
-      setPixelColor(i,Color(0,0,0)); // Initialize Pixels
-    }
-    show();               // Clear Display
-    runMode = false;      // Turn Off NeoPix Object
-  }
-
-  void Update(unsigned long currentMillis) {
-
-    if( runMode == true and (currentMillis - previousMillis >= CheckTime) ) {
-      totalMillis += (currentMillis - previousMillis);
-      if ( totalMillis > (OnTime * 1000) ) {  // if OnTime Exceeded
-        turnOff();                        // turn off display
-      }
-      else {
-        if(neoDisp == "colorWipe") {
-          colorWipe(Color(255, 0, 0)); // Red
-//          colorWipe(Color(0, 255, 0)); // Green
-//          colorWipe(Color(0, 0, 255)); // Blue
-        }
-        else if(neoDisp == "rainbow") {
-          rainbow();
-        }
-        else if(neoDisp == "rainbowCycle") {
-          rainbowCycle();
-        }
-        previousMillis = currentMillis;  // Remember the time
-      }
-    }
-  }
-
-  void colorWipe(uint32_t c) {
-  // Fill the dots one after the other with a color    
-    if (x <= numPixels()) {
-      setPixelColor(x, c);
-      show();
-      x++;          
-    }
-  }
-  
-  void rainbow() {
-    uint16_t i;
-    if (x < 256) {
-      for(i=0; i<numPixels(); i++) {
-        setPixelColor(i, Wheel((i+x) & 255));
-      }
-      show();
-      x++;    
-    }
-  }
-  
-  // Slightly different, this makes the rainbow equally distributed throughout
-  void rainbowCycle() {
-    uint16_t i;
-    if (x < 256*5) {
-      for(i=0; i< numPixels(); i++) {
-        setPixelColor(i, Wheel(((i * 256 / numPixels()) + x) & 255));
-      }
-      show();
-      x++;
-    }
-  }
-  
-  // Input a value 0 to 255 to get a color value.
-  // The colours are a transition r - g - b - back to r.
-  uint32_t Wheel(byte WheelPos) {
-    WheelPos = 255 - WheelPos;
-    if(WheelPos < 85) {
-      return Color(255 - WheelPos * 3, 0, WheelPos * 3);
-    }
-    if(WheelPos < 170) {
-      WheelPos -= 85;
-      return Color(0, WheelPos * 3, 255 - WheelPos * 3);
-    }
-    WheelPos -= 170;
-    return Color(WheelPos * 3, 255 - WheelPos * 3, 0);
-  }
-};
-
-class Flasher
-{
-  // Class Member Variables
-  // These are initialized at startup
   int ledPin;      // the number of the LED pin
   long OnTime;     // milliseconds of on-time
   long OffTime;    // milliseconds of off-time
+  int Duration;    // number of seconds to flash
+  bool runMode;    // Whether the Flasher is running or not
 
   // These maintain the current state
-  volatile int ledState;                // ledState used to set the LED
-  volatile unsigned long previousMillis;    // will store last time LED was updated
+  volatile int ledState;                     // ledState used to set the LED
+  volatile unsigned long lastUpdate;    // last update of position
+  volatile unsigned long currentMillis; // current ms counter
+  volatile unsigned long totalMillis;   // total ms display has been running
 
-  // Constructor - creates a Flasher 
-  // and initializes the member variables and state
+  // Constructor - creates a Flasher and initializes the member variables and state
   public:
-  Flasher(int pin, long on, long off)
-  {
-  ledPin = pin;
-  pinMode(ledPin, OUTPUT);     
-    
-  OnTime = on;
-  OffTime = off;
-  
-  ledState = LOW; 
-  previousMillis = 0;
+  Flasher(int pin, long on, long off) {
+    ledPin = pin;
+    pinMode(ledPin, OUTPUT);     
+    OnTime = on;
+    OffTime = off;
+    ledState = LOW; 
+    lastUpdate = 0;
+    runMode = false;
   }
 
-  void Update(unsigned long currentMillis)
-  {
-    if((ledState == HIGH) && (currentMillis - previousMillis >= OnTime))
-    {
-      ledState = LOW;  // Turn it off
-      previousMillis = currentMillis;  // Remember the time
-      digitalWrite(ledPin, ledState);  // Update the actual LED
-    }
-    else if ((ledState == LOW) && (currentMillis - previousMillis >= OffTime))
-    {
-      ledState = HIGH;  // turn it on
-      previousMillis = currentMillis;   // Remember the time
-      digitalWrite(ledPin, ledState);   // Update the actual LED
-    }
+  void Update() {
+      currentMillis = millis();
+      
+      if(runMode == true and ledState == HIGH and (currentMillis - lastUpdate) > OnTime) { 
+          totalMillis += (currentMillis - lastUpdate);
+          if (totalMillis > (Duration * 1000)) {
+            endDisp();
+          }
+          else {
+            lastUpdate = currentMillis;
+            if(ledState == HIGH) {
+              ledState = LOW;  // Turn it off
+              lastUpdate = currentMillis;  // Remember the time
+              digitalWrite(ledPin, ledState);  // Update the actual LED
+            }
+          }
+      }
+      else if(runMode == true and ledState == LOW and (currentMillis - lastUpdate) > OffTime) {  
+          totalMillis += (currentMillis - lastUpdate);
+          if (totalMillis > (Duration * 1000)) {
+            endDisp();
+          }
+          else {
+            lastUpdate = currentMillis;
+            if (ledState == LOW) {
+              ledState = HIGH;  // turn it on
+              lastUpdate = currentMillis;   // Remember the time
+              digitalWrite(ledPin, ledState);   // Update the actual LED
+            }
+          }
+      }
+  }
+
+  // Start the Flasher
+  void startDisp(uint8_t dur) {
+    Duration = dur;
+    runMode = true;
+    lastUpdate = millis();
+    totalMillis = 0;
+    ledState = HIGH;    // turn it on
+//    Serial.println("Start Flasher at "+String(lastUpdate)+" for "+String(Duration)+" secs");
+  }
+  
+  // End the Flasher
+  void endDisp() {
+    runMode = false;
+    ledState = LOW;  // turn it off
+    digitalWrite(ledPin, ledState);   // Update the actual LED
+//    Serial.println("Ended Flasher");
   }
 };
 
-class Sweeper
-{
+// ################################################################
+class Sweeper {
+  public:
   Servo servo;              // the servo
   int  updateInterval;      // interval between updates
+  int Duration;             // number of seconds to sweep
+  bool runMode;             // Whether we are running the Sweeper or not
   
-  volatile int pos;                  // current servo position 
-  volatile unsigned long lastUpdate; // last update of position
-  volatile int increment;            // increment to move for each interval
+  volatile int pos;                       // current servo position 
+  volatile unsigned long lastUpdate;      // last update of position
+  volatile int increment;                 // increment to move for each interval
+  volatile unsigned long currentMillis;   // will store the current ms
+  volatile unsigned long totalMillis;     // will store the total ms run so far
 
 public: 
-  Sweeper(int interval)
-  {
+  Sweeper(int interval) {
     updateInterval = interval;
     increment = 1;
+    runMode = false;
   }
   
-  void Attach(int pin)
-  {
+  void Attach(int pin) {
     servo.attach(pin);
   }
   
-  void Detach()
-  {
+  void Detach() {
     servo.detach();
   }
   
-  void reset()
-  {
+  void reset() {
     pos = 0;
     servo.write(pos);
     increment = abs(increment);
   }
   
-  void Update(unsigned long currentMillis)
-  {
-    if((currentMillis - lastUpdate) > updateInterval)  // time to update
-    {
-      lastUpdate = currentMillis;
-      pos += increment;
-      servo.write(pos);
-      if ((pos >= 180) || (pos <= 0)) // end of sweep
-      {
-        // reverse direction
-        increment = -increment;
+  void Update() {
+      currentMillis = millis();
+      // Is it time to update yet?
+      if(runMode == true and (currentMillis - lastUpdate) > updateInterval) {  
+          totalMillis += (currentMillis - lastUpdate);
+          if (totalMillis > (Duration * 1000)) {
+            endDisp();
+          }
+          else {
+            lastUpdate = currentMillis;
+            pos += increment;
+            servo.write(pos);
+            if ((pos >= 180) || (pos <= 0)) {   // end of sweep = reverse direction
+              increment = -increment;
+            }
+          }
       }
-    }
+  }
+  
+  // Start the Sweeper
+  void startDisp(uint8_t dur) {
+    Duration = dur;
+    runMode = true;
+    lastUpdate = millis();
+    totalMillis = 0;
+//    Serial.println("Start Sweeper at "+String(lastUpdate)+" for "+String(Duration)+" secs");
+  }
+  
+  // End the Sweeper
+  void endDisp() {
+      runMode = false;
+      reset();
+//      Serial.println("Ended Sweeper");
   }
 };
 
+// ################################################################
 // Create Action Objects 
 Flasher led1(6, 123, 400);
 Flasher led2(7, 350, 350);
@@ -469,17 +470,14 @@ void Thing1Complete();
 void Thing2Complete();
 void Thing3Complete();
 void Thing4Complete();
-NeoPatterns Thing1(35, 10, NEO_GRB + NEO_KHZ800, &Thing1Complete,10);
-NeoPatterns Thing2(12, 3, NEO_GRB + NEO_KHZ800, &Thing2Complete,10);
-NeoPatterns Thing3(8, 4, NEO_GRB + NEO_KHZ800, &Thing3Complete,10);
-NeoPatterns Thing4(8, 5, NEO_GRB + NEO_KHZ800, &Thing4Complete,10);
-//NeoPix strip1(35, 10, NEO_GRB + NEO_KHZ800);
-//NeoPix strip2(12, 3, NEO_GRB + NEO_KHZ800);
-//NeoPix strip3(8, 4, NEO_GRB + NEO_KHZ800);
-//NeoPix strip4(8, 5, NEO_GRB + NEO_KHZ800);
+NeoPatterns Thing1(35, 10, NEO_GRB + NEO_KHZ800, &Thing1Complete);
+NeoPatterns Thing2(12, 3, NEO_GRB + NEO_KHZ800, &Thing2Complete);
+NeoPatterns Thing3(8, 4, NEO_GRB + NEO_KHZ800, &Thing3Complete);
+NeoPatterns Thing4(8, 5, NEO_GRB + NEO_KHZ800, &Thing4Complete);
 
 int but1,but2;
 
+// ################################################################
 // Setup
 void setup() { 
   Serial.begin(115200);
@@ -499,21 +497,17 @@ void setup() {
   Thing3.begin();
   Thing4.begin();
 
-  // Kick off a pattern
+  // Set Up a pattern
   Thing1.TheaterChase(Thing1.Color(255,255,0), Thing1.Color(0,0,50), 100);
   Thing2.RainbowCycle(3);
   Thing2.Color1 = Thing1.Color1;
   Thing3.Scanner(Thing1.Color(255,0,0), 55);
-  Thing4.ColorWipe(Thing2.Color(0,150,150), 25);
-  // Initialize the Strips
-  //strip1.begin();
-  //strip1.show();
-  //strip2.begin();
-  //strip2.show();
-  //strip3.begin();
-  //strip3.show();
-  //strip4.begin();
-  //strip4.show();
+  Thing4.Patriot(3,100);
+
+  Thing1.endDisp();
+  Thing2.endDisp();
+  Thing3.endDisp();
+  Thing4.endDisp();
 } 
  
 void Reset(){
@@ -522,57 +516,52 @@ void Reset(){
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
-  sweeper1.Update(currentMillis);
-  sweeper2.Update(currentMillis);
-  led1.Update(currentMillis);
-  led2.Update(currentMillis);
 
-//  if(digitalRead(2) != HIGH) {
-//    strip1.kickOff(currentMillis, 4, 5, "rainbowCycle");
-//    strip2.kickOff(currentMillis, 3, 10, "rainbowCycle");
-//    strip3.kickOff(currentMillis, 2, 15, "rainbowCycle");
-//    strip4.kickOff(currentMillis, 1, 20, "rainbowCycle");
-//  }  
-//  strip1.Update(currentMillis);
-//  strip2.Update(currentMillis);
-//  strip3.Update(currentMillis);
-//  strip4.Update(currentMillis);
-
-    // Switch patterns on a button press:
+    // Turn on patterns on a button press:
     if (digitalRead(but1) == LOW) // Button #1 pressed
-    {
+    {   
+        Thing1.startDisp(5);
+        Thing2.startDisp(8);
+        sweeper1.startDisp(6);
+        led2.startDisp(14);
         // Switch Thing1 to FADE pattern
-        Thing1.ActivePattern = FADE;
-        Thing1.Interval = 20;
+ //       Thing1.ActivePattern = FADE;
+ //       Thing1.Interval = 20;
         // Speed up the rainbow on Thing2
-        Thing2.Interval = 0;
+ //       Thing2.Interval = 0;
         // Set Thing3 to all red
-        Thing3.ColorSet(Thing3.Color(255, 0, 0));
+ //       Thing3.ColorSet(Thing3.Color(255, 0, 0));
     }
     else if (digitalRead(but2) == LOW) // Button #2 pressed
     {
+        Thing3.startDisp(5);
+        Thing4.startDisp(3);
+        sweeper2.startDisp(8);
+        led1.startDisp(10);
         // Switch to alternating color wipes on Rings1 and 2
-        Thing1.ActivePattern = COLOR_WIPE;
-        Thing2.ActivePattern = COLOR_WIPE;
-        Thing2.TotalSteps = Thing2.numPixels();
+ //       Thing1.ActivePattern = COLOR_WIPE;
+ //       Thing2.ActivePattern = COLOR_WIPE;
+ //       Thing2.TotalSteps = Thing2.numPixels();
     }
     else // Back to normal operation
     {
         // Restore all pattern parameters to normal values
-        Thing1.ActivePattern = THEATER_CHASE;
-        Thing1.Interval = 100;
-        Thing2.ActivePattern = RAINBOW_CYCLE;
-        Thing2.TotalSteps = 255;
-        Thing2.Interval = min(10, Thing2.Interval);
+  //      Thing1.ActivePattern = THEATER_CHASE;
+  //      Thing1.Interval = 100;
+  //      Thing2.ActivePattern = RAINBOW_CYCLE;
+  //      Thing2.TotalSteps = 255;
+  //      Thing2.Interval = min(10, Thing2.Interval);
     }    
     // Update the things.
-    Thing1.Update();
-    Thing2.Update();    
-    Thing3.Update();    
-    Thing4.Update();    
     
-
+    if (Thing1.runMode == true) {Thing1.Update();}
+    if (Thing2.runMode == true) {Thing2.Update();}
+    if (Thing3.runMode == true) {Thing3.Update();}
+    if (Thing4.runMode == true) {Thing4.Update();}
+    if (sweeper1.runMode == true) {sweeper1.Update();}
+    if (sweeper2.runMode == true) {sweeper2.Update();}
+    if (led1.runMode == true) {led1.Update();}
+    if (led2.runMode == true) {led2.Update();}
 }
 
 //------------------------------------------------------------
@@ -582,33 +571,37 @@ void loop() {
 // Thing1 Completion Callback
 void Thing1Complete()
 {
-    if (digitalRead(9) == LOW)  // Button #2 pressed
-    {
-        // Alternate color-wipe patterns with Thing2
-        Thing2.Interval = 40;
-        Thing1.Color1 = Thing1.Wheel(random(255));
-        Thing1.Interval = 20000;
-    }
-    else  // Retrn to normal
-    {
+
+      Thing1.Color1 = Thing1.Wheel(random(255));
+      Thing1.Color2 = Thing1.Wheel(random(255));
+
+//    if (digitalRead(9) == LOW)  // Button #2 pressed
+//    {
+//        // Alternate color-wipe patterns with Thing2
+//        Thing2.Interval = 40;
+//        Thing1.Color1 = Thing1.Wheel(random(255));
+//        Thing1.Interval = 20000;
+//    }
+//    else  // Retrn to normal
+//    {
       Thing1.Reverse();
-    }
+//    }
 }
 
 // Ring 2 Completion Callback
 void Thing2Complete()
 {
-    if (digitalRead(9) == LOW)  // Button #2 pressed
-    {
-        // Alternate color-wipe patterns with Thing1
-        Thing1.Interval = 20;
-        Thing2.Color1 = Thing2.Wheel(random(255));
-        Thing2.Interval = 20000;
-    }
-    else  // Retrn to normal
-    {
-        Thing2.RainbowCycle(random(0,10));
-    }
+//    if (digitalRead(9) == LOW)  // Button #2 pressed
+//    {
+//        // Alternate color-wipe patterns with Thing1
+//        Thing1.Interval = 20;
+//        Thing2.Color1 = Thing2.Wheel(random(255));
+//        Thing2.Interval = 20000;
+//    }
+//    else  // Retrn to normal
+//    {
+        Thing2.Reverse();
+//    }
 }
 
 // Thing3 Completion Callback
@@ -622,7 +615,7 @@ void Thing3Complete()
 void Thing4Complete()
 {
     // Random color change for next scan
-    Thing4.Color1 = Thing4.Wheel(random(255));
+//    Thing4.Reverse();
 }
 
 
