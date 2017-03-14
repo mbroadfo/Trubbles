@@ -309,16 +309,15 @@ class NeoPatterns : public Adafruit_NeoPixel {
 };
 // ################################################################
 class Blinker {
+  // Instance Variables
   public:
-    int ledPin;     // the pin for the LED
-    long onTime;    // ms for on-time
-    bool runMode;    // Whether Blinker is running or not
-  
-    // Current State Variables
-    volatile int brightness;                // current brightness level
-    volatile unsigned long startTime;       // last ms updated
-    volatile unsigned long currentMillis;   // current ms counter
-    volatile unsigned long totalTime;       // total ms counter
+    int ledPin;                    // the pin for the LED
+    bool runMode;                  // Whether Blinker is running or not
+    long onTime;                   // ms until end of display
+    int brightness;                // current brightness level
+    unsigned long startTime;       // ms counter at start of display
+    unsigned long totalTime;       // total ms display has been runing
+    unsigned long currentMillis;   // current ms counter
   
   // Constructor - creates a Blinker and initialized member variables and state
   public:
@@ -326,37 +325,41 @@ class Blinker {
       ledPin = pin;
       pinMode(ledPin, OUTPUT);
       runMode = false;
-      totalTime = 0;
     }
+  
+  void startDisp(int on) {
+    onTime = on;
+    brightness = 255;
+    startTime = millis();
+    totalTime = 0;
+    runMode = true;
+//    analogWrite(ledPin,255);
+//    delay(1000);
+    Serial.println("Start Blinker on pin "+String(ledPin)+" for "+String(onTime)+" milliseconds");
+  }
   
   void Update() {
       if(runMode == true) {
           currentMillis = millis();
           totalTime = currentMillis - startTime;
-          if(totalTime > onTime) {
+          if(totalTime >= onTime) {
               endDisp();
           }
           else {
-              brightness = int(255 * (1.0 - float(totalTime) / float(onTime)));
+              brightness = int(255 * (1.0 - (float(totalTime) / float(onTime))));
+              brightness = 255;
+              Serial.println("Brightness: " + String(brightness) + " totalTime = " + String(totalTime));
+              analogWrite(ledPin,brightness);
+              delay(1000);
           }
-//          Serial.println("Brightness: " + String(brightness) + " totalTime = " + String(totalTime));
-          analogWrite(ledPin,brightness);
       }
-  }
-  
-  void startDisp(int on) {
-    onTime = on;
-    runMode = true;
-    startTime = millis();
-    brightness = 255;
-//    Serial.println("Start Blinker on pin "+String(ledPin)+" for "+String(onTime)+" milliseconds");
   }
   
   // End the Blinker
   void endDisp() {
     runMode = false;
-    brightness = 0;
-//    Serial.println("Ended Blinker");
+    analogWrite(ledPin,0);
+    Serial.println("Ended Blinker");
   }
 };
 
@@ -378,19 +381,17 @@ class Sweeper {
 public: 
   Sweeper(int pin) {
     pinOut = pin;
-    increment = 1;
-    turns = 0;
     runMode = false;
   }
   
   void Attach() {
     servo.attach(pinOut);
-    Serial.println("Sweeper Attached to pin " + String(pinOut));
+//    Serial.println("Sweeper Attached to pin " + String(pinOut));
   }
   
   void Detach() {
-    servo.detach(pinOut);
-    Serial.println("Sweeper Detached from pin " + String(pinOut));
+    servo.detach();
+//    Serial.println("Sweeper Detached from pin " + String(pinOut));
   }
   
   void reset() {
@@ -403,8 +404,10 @@ public:
   void startDisp(int iters, int interval) {
     iterations = iters;
     updateInterval = interval;
-    runMode = true;
+    increment = 1;
+    turns = 0;
     lastUpdate = millis();
+    runMode = true;
     Serial.println("Start Sweeper on pin "+String(pinOut)+" at "+String(lastUpdate)+" for "+String(iterations)+" iterations with " + String(updateInterval) + " ms intervals");
   }
   
@@ -424,7 +427,7 @@ public:
                   }
                   if(pos <= 0) { 
                       turns++;
-                      Serial.println("Turns Completed = " + String(turns));
+//                      Serial.println("Turns Completed on pin "+String(pinOut)+" = " + String(turns));
                   }
               }
           }
@@ -436,7 +439,7 @@ public:
       runMode = false;
       reset();
       Detach();
-    Serial.println("Sweeper endeded at "+String(lastUpdate));
+      Serial.println("Sweeper on pin "+String(pinOut)+" ended at "+String(lastUpdate));
   }
 };
 
@@ -467,17 +470,26 @@ long currTime, timer1, timer2, debounce;
 // ################################################################
 // Setup
 void setup() { 
+  
+  // Setup Serial
+  Serial.begin(115200);
+  
   // Setup Buttons
   debounce = 50;
   but1 = 14;
   but2 = 16;
-  butState1, butPrev1 = HIGH;
-  butState2, butPrev2 = HIGH;
+  butState1, butPrev1, butState2, butPrev2 = HIGH;
   timer1, timer2 = 0;
   pinMode(but1, INPUT_PULLUP);
   pinMode(but2, INPUT_PULLUP);
 
-  Serial.begin(115200);
+  // Reset Sweepers
+  sweeper1.Attach();
+  sweeper2.Attach();
+  sweeper1.reset();
+  sweeper2.reset();
+  sweeper1.Detach();
+  sweeper2.Detach();
 
   // Initialize all the Things
   Thing1.begin();
@@ -493,11 +505,6 @@ void setup() {
   Thing5.endDisp();
 } 
  
-void Reset(){
-  sweeper1.reset();
-  sweeper2.reset();
-}
-
 void loop() {
     if (Serial.available()) {
       char rx = Serial.read();
@@ -557,16 +564,16 @@ void loop() {
       }
       else if (rx == 'f') {
         sweeper2.Attach();
-        sweeper2.startDisp(6,5);
+        sweeper2.startDisp(6,6);
       }
       else if (rx == 'g') {
         sweeper1.Attach();
-        sweeper2.Attach();
         sweeper1.startDisp(4,6);
+        sweeper2.Attach();
         sweeper2.startDisp(6,4);
       }
       else if (rx == 'h') {
-        led1.startDisp(600);
+        led1.startDisp(10000);
       }
     }
     
@@ -596,12 +603,13 @@ void loop() {
 
 
     // Update the things.
-    Thing1.Update();
-    Thing2.Update();
-    Thing3.Update();
-    Thing4.Update();
-    sweeper1.Update();
-    sweeper2.Update();
+//    Thing1.Update();
+//    Thing2.Update();
+//    Thing3.Update();
+//    Thing4.Update();
+//    Thing5.Update();
+//    sweeper1.Update();
+//    sweeper2.Update();
     led1.Update();
 }
 
