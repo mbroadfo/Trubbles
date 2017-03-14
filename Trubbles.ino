@@ -474,7 +474,7 @@ NeoPatterns Thing1(35, 20, NEO_GRB + NEO_KHZ800, &Thing1Complete);
 NeoPatterns Thing2(12, 19, NEO_GRB + NEO_KHZ800, &Thing2Complete);
 NeoPatterns Thing3(16, 18, NEO_GRB + NEO_KHZ800, &Thing3Complete);
 NeoPatterns Thing4(8, 15, NEO_GRB + NEO_KHZ800, &Thing4Complete);
-NeoPatterns Thing5(8, 15, NEO_GRB + NEO_KHZ800, &Thing5Complete);
+NeoPatterns Thing5(8, 17, NEO_GRB + NEO_KHZ800, &Thing5Complete);
 
 int but1,butState1,butPrev1;
 int but2,butState2,butPrev2;
@@ -487,10 +487,10 @@ void setup() {
   // Setup Buttons
   debounce = 50;
   but1 = 14;
-  butState1, butPrev1 = HIGH;
-  timer1, timer2 = 0;
   but2 = 16;
+  butState1, butPrev1 = HIGH;
   butState2, butPrev2 = HIGH;
+  timer1, timer2 = 0;
   pinMode(but1, INPUT_PULLUP);
   pinMode(but2, INPUT_PULLUP);
 
@@ -528,13 +528,12 @@ void loop() {
         Thing2.Patriot(3,100);
         Thing3.Patriot(3,100);
         Thing4.Patriot(3,100);
+        Thing5.Patriot(3,100);
         Thing1.startDisp(5);
         Thing2.startDisp(5);
         Thing3.startDisp(5);
         Thing4.startDisp(5);
         Thing5.startDisp(5);
-        sweeper1.startDisp(5);
-        sweeper2.startDisp(5);
 
       }
       else if (rx == 'b') {
@@ -560,7 +559,6 @@ void loop() {
         Thing3.startDisp(9);
         Thing4.startDisp(9);
         Thing5.startDisp(9);
-        sweeper1.startDisp(5);
       }
       else if (rx == 'd') {
         Thing1.Scanner(Thing1.Color(255,0,0), 55);
@@ -573,48 +571,25 @@ void loop() {
         Thing3.startDisp(7);
         Thing4.startDisp(7);
         Thing5.startDisp(7);
-        sweeper2.startDisp(5);
       }
       else if (rx == 'e') {
-        Thing1.TheaterChase(Thing1.Color(255,255,0), Thing1.Color(0,0,50), 100);
-        Thing2.RainbowCycle(3);
-        Thing2.Color1 = Thing1.Color1;
-        Thing3.Patriot(3,100);
-        Thing4.Scanner(Thing1.Color(255,0,0), 55);
         sweeper1.startDisp(4);
       }
       else if (rx == 'f') {
-        Thing1.TheaterChase(Thing1.Color(255,255,0), Thing1.Color(0,0,50), 100);
-        Thing2.RainbowCycle(3);
-        Thing2.Color1 = Thing1.Color1;
-        Thing3.Patriot(3,100);
-        Thing4.Scanner(Thing1.Color(255,0,0), 55);
         sweeper2.startDisp(6);
       }
       else if (rx == 'g') {
         led1.startDisp(8);
-        Thing1.TheaterChase(Thing1.Color(255,255,0), Thing1.Color(0,0,50), 100);
-        Thing2.RainbowCycle(3);
-        Thing2.Color1 = Thing1.Color1;
-        Thing3.Patriot(3,100);
-        Thing4.Scanner(Thing1.Color(255,0,0), 55);
-        sweeper1.startDisp(5);
-        sweeper2.startDisp(5);
       }
       else if (rx == 'h') {
-        Thing1.TheaterChase(Thing1.Color(255,255,0), Thing1.Color(0,0,50), 100);
-        Thing2.RainbowCycle(3);
-        Thing2.Color1 = Thing1.Color1;
-        Thing3.Patriot(3,100);
-        Thing4.Scanner(Thing1.Color(255,0,0), 55);
+        led1.startDisp(8);
       }
     }
     
     butState1 = digitalRead(but1);
     butState2 = digitalRead(but2);
     currTime = millis();
-    Serial.println("but1="+String(butState1)+" but2="+butState2);
-
+    
     if (butState1 == LOW && butPrev1 == HIGH && (currTime - timer1 > debounce)) {
       butPrev1 = butState1;
       timer1 = millis();
