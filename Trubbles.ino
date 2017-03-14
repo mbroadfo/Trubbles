@@ -516,52 +516,42 @@ void Reset(){
 }
 
 void loop() {
+    if (Serial.available()) {
+      char rx = Serial.read();
+      
+      if      (rx == 'a') {Thing1.startDisp(5);}
+      else if (rx == 'b') {Thing2.startDisp(8);}
+      else if (rx == 'c') {Thing3.startDisp(9);}
+      else if (rx == 'd') {Thing4.startDisp(7);}
+      else if (rx == 'e') {sweeper1.startDisp(4);}
+      else if (rx == 'f') {sweeper2.startDisp(6);}
+      else if (rx == 'g') {led1.startDisp(8);}
+      else if (rx == 'h') {led2.startDisp(14);}
+    }
 
-    // Turn on patterns on a button press:
-    if (digitalRead(but1) == LOW) // Button #1 pressed
-    {   
-        Thing1.startDisp(5);
-        Thing2.startDisp(8);
-        sweeper1.startDisp(6);
-        led2.startDisp(14);
-        // Switch Thing1 to FADE pattern
- //       Thing1.ActivePattern = FADE;
- //       Thing1.Interval = 20;
-        // Speed up the rainbow on Thing2
- //       Thing2.Interval = 0;
-        // Set Thing3 to all red
- //       Thing3.ColorSet(Thing3.Color(255, 0, 0));
+    if (digitalRead(but1) == LOW) {
+      Thing1.startDisp(2);
+      Thing2.startDisp(2);
+      Thing3.startDisp(2);
+      Thing4.startDisp(2);      
     }
-    else if (digitalRead(but2) == LOW) // Button #2 pressed
-    {
-        Thing3.startDisp(5);
-        Thing4.startDisp(3);
-        sweeper2.startDisp(8);
-        led1.startDisp(10);
-        // Switch to alternating color wipes on Rings1 and 2
- //       Thing1.ActivePattern = COLOR_WIPE;
- //       Thing2.ActivePattern = COLOR_WIPE;
- //       Thing2.TotalSteps = Thing2.numPixels();
+
+    if (digitalRead(but2) == LOW) {
+      sweeper1.startDisp(2);
+      sweeper2.startDisp(2);
+      led1.startDisp(2);
+      led2.startDisp(2);      
     }
-    else // Back to normal operation
-    {
-        // Restore all pattern parameters to normal values
-  //      Thing1.ActivePattern = THEATER_CHASE;
-  //      Thing1.Interval = 100;
-  //      Thing2.ActivePattern = RAINBOW_CYCLE;
-  //      Thing2.TotalSteps = 255;
-  //      Thing2.Interval = min(10, Thing2.Interval);
-    }    
+
     // Update the things.
-    
-    if (Thing1.runMode == true) {Thing1.Update();}
-    if (Thing2.runMode == true) {Thing2.Update();}
-    if (Thing3.runMode == true) {Thing3.Update();}
-    if (Thing4.runMode == true) {Thing4.Update();}
-    if (sweeper1.runMode == true) {sweeper1.Update();}
-    if (sweeper2.runMode == true) {sweeper2.Update();}
-    if (led1.runMode == true) {led1.Update();}
-    if (led2.runMode == true) {led2.Update();}
+    Thing1.Update();
+    Thing2.Update();
+    Thing3.Update();
+    Thing4.Update();
+    sweeper1.Update();
+    sweeper2.Update();
+    led1.Update();
+    led2.Update();
 }
 
 //------------------------------------------------------------
