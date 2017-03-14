@@ -23,6 +23,11 @@ class NeoPix : public Adafruit_NeoPixel {
   }
 
   void kickOff(long currMs, long ctime, long otime, String ndisp) {
+    Serial.print("Kickoff: ");
+    Serial.print(currMs);
+    Serial.print(" : ");
+    Serial.println(previousMillis);
+ 
     previousMillis = currMs; // Current ms Timer
     CheckTime = ctime;       // ms between updates
     OnTime = otime;          // Total Display Time in sec
@@ -34,6 +39,11 @@ class NeoPix : public Adafruit_NeoPixel {
   }
 
   void turnOff() {
+    Serial.print("Turnoff: ");
+    Serial.print(previousMillis);
+    Serial.print(" : ");
+    Serial.println(totalMillis);
+ 
     for (int i = 0; numPixels(); i++) {
       setPixelColor(x,0); // Initialize Pixels
     }
@@ -42,7 +52,16 @@ class NeoPix : public Adafruit_NeoPixel {
   }
 
   void Update(unsigned long currentMillis) {
+    Serial.print("Update: Runmode=");
+    Serial.print(runMode);
+    Serial.print(" Current=");
+    Serial.print(currentMillis);
+    Serial.print(" Previous=");
+    Serial.print(previousMillis);
+    Serial.print(" CheckTime=");
+    Serial.println(CheckTime);
     if( runMode == true and (currentMillis - previousMillis >= CheckTime) ) {
+
       totalMillis += (currentMillis - previousMillis);
       if ( totalMillis > (OnTime * 1000) ) {  // if OnTime Exceeded
         turnOff();                        // turn off display
@@ -59,8 +78,8 @@ class NeoPix : public Adafruit_NeoPixel {
         else if(neoDisp == "rainbowCycle") {
           rainbowCycle();
         }
+        previousMillis = currentMillis;  // Remember the time
       }
-      previousMillis = currentMillis;  // Remember the time
     }
   }
 
@@ -212,11 +231,11 @@ Flasher led2(7, 350, 350);
 Sweeper sweeper1(4);
 Sweeper sweeper2(6);
 
-NeoPix strip1(35, 5, NEO_GRB + NEO_KHZ800);
+NeoPix strip1(35, 55, NEO_GRB + NEO_KHZ800);
 
 // Setup
 void setup() { 
-//  Serial.begin(9600);
+  Serial.begin(9600);
 
   // Timer0 is already used for millis() - we'll just interrupt somewhere in the middle and call the "Compare A" function below
   OCR0A = 0xAF;
@@ -242,18 +261,18 @@ void Reset(){
 // Interrupt is called once a millisecond, 
 SIGNAL(TIMER0_COMPA_vect) {
   unsigned long currentMillis = millis();
-
-//  Serial.println(digitalRead(2));
+  Serial.print("Current time: ");
+  Serial.println(currentMillis);
 
   if(digitalRead(2) != HIGH) {
     strip1.kickOff(currentMillis, 50, 5, "rainbowCycle");
   }
   
-  sweeper1.Update(currentMillis);
-  sweeper2.Update(currentMillis);
-  led1.Update(currentMillis);
-  led2.Update(currentMillis);
-  strip1.Update(currentMillis);
+//  sweeper1.Update(currentMillis);
+//  sweeper2.Update(currentMillis);
+//  led1.Update(currentMillis);
+//  led2.Update(currentMillis);
+//  strip1.Update(currentMillis);
 } 
 
 void loop() {
