@@ -11,18 +11,14 @@ class NeoPix : public Adafruit_NeoPixel {
   String neoDisp;   // Display Type  
   // Current State Variables
   volatile unsigned long previousMillis;  // last time we checked
-  volatile unsigned long totalMillis;    //  total ms display has been running
-  volatile bool runMode;                 //  whether Neo Display still running
-  volatile int x,y;                     // generic counters within NeoPix
+  volatile unsigned long totalMillis;     //  total ms display has been running
+  volatile bool runMode;                  //  whether Neo Display still running
+  volatile int x,y;                       // generic counters within NeoPix
   
   // Constructor - Creates a NeoPix & Initialized Variables & State
   public:
   NeoPix(uint16_t pix, uint8_t pin, uint8_t nflag) : Adafruit_NeoPixel(pix, pin, nflag) {
     pinMode(pin, OUTPUT);
-   previousMillis = 0;  
-   totalMillis = 0;
-   x = 0;
-   y = 0;
    runMode = false;   // start running when created
   }
 
@@ -46,9 +42,9 @@ class NeoPix : public Adafruit_NeoPixel {
   }
 
   void Update(unsigned long currentMillis) {
-    if(runMode == true and (currentMillis - previousMillis >= CheckTime)) {
+    if( runMode == true and (currentMillis - previousMillis >= CheckTime) ) {
       totalMillis += (currentMillis - previousMillis);
-      if (totalMillis > OnTime * 1000) {  // if OnTime Exceeded
+      if ( totalMillis > (OnTime * 1000) ) {  // if OnTime Exceeded
         turnOff();                        // turn off display
       }
       else {
@@ -250,7 +246,7 @@ SIGNAL(TIMER0_COMPA_vect) {
 //  Serial.println(digitalRead(2));
 
   if(digitalRead(2) != HIGH) {
-    strip1.kickOff(currentMillis, 1, 10, "rainbowCycle");
+    strip1.kickOff(currentMillis, 50, 5, "rainbowCycle");
   }
   
   sweeper1.Update(currentMillis);
