@@ -23,11 +23,6 @@ class NeoPix : public Adafruit_NeoPixel {
   }
 
   void kickOff(long currMs, long ctime, long otime, String ndisp) {
-    Serial.print("Kickoff: ");
-    Serial.print(currMs);
-    Serial.print(" : ");
-    Serial.println(previousMillis);
- 
     previousMillis = currMs; // Current ms Timer
     CheckTime = ctime;       // ms between updates
     OnTime = otime;          // Total Display Time in sec
@@ -39,29 +34,16 @@ class NeoPix : public Adafruit_NeoPixel {
   }
 
   void turnOff() {
-    Serial.print("Turnoff: ");
-    Serial.print(previousMillis);
-    Serial.print(" : ");
-    Serial.println(totalMillis);
- 
-    for (int i = 0; numPixels(); i++) {
-      setPixelColor(x,0); // Initialize Pixels
+    for (int i = 0; i<numPixels(); i++) {
+      setPixelColor(i,Color(0,0,0)); // Initialize Pixels
     }
     show();               // Clear Display
     runMode = false;      // Turn Off NeoPix Object
   }
 
   void Update(unsigned long currentMillis) {
-    Serial.print("Update: Runmode=");
-    Serial.print(runMode);
-    Serial.print(" Current=");
-    Serial.print(currentMillis);
-    Serial.print(" Previous=");
-    Serial.print(previousMillis);
-    Serial.print(" CheckTime=");
-    Serial.println(CheckTime);
-    if( runMode == true and (currentMillis - previousMillis >= CheckTime) ) {
 
+    if( runMode == true and (currentMillis - previousMillis >= CheckTime) ) {
       totalMillis += (currentMillis - previousMillis);
       if ( totalMillis > (OnTime * 1000) ) {  // if OnTime Exceeded
         turnOff();                        // turn off display
@@ -231,16 +213,14 @@ Flasher led2(7, 350, 350);
 Sweeper sweeper1(4);
 Sweeper sweeper2(6);
 
-NeoPix strip1(35, 55, NEO_GRB + NEO_KHZ800);
+NeoPix strip1(35, 10, NEO_GRB + NEO_KHZ800);
+NeoPix strip2(12, 3, NEO_GRB + NEO_KHZ800);
+NeoPix strip3(8, 4, NEO_GRB + NEO_KHZ800);
+NeoPix strip4(8, 5, NEO_GRB + NEO_KHZ800);
 
 // Setup
 void setup() { 
-  Serial.begin(9600);
 
-  // Timer0 is already used for millis() - we'll just interrupt somewhere in the middle and call the "Compare A" function below
-  OCR0A = 0xAF;
-  TIMSK0 |= _BV(OCIE0A);
-  
   // Setup Button
   pinMode(2, INPUT_PULLUP);
 
@@ -248,9 +228,15 @@ void setup() {
   sweeper1.Attach(8);
   sweeper2.Attach(9);
 
-  // Initialize the Strip
+  // Initialize the Strips
   strip1.begin();
   strip1.show();
+  strip2.begin();
+  strip2.show();
+  strip3.begin();
+  strip3.show();
+  strip4.begin();
+  strip4.show();
 } 
  
 void Reset(){
@@ -258,22 +244,22 @@ void Reset(){
   sweeper2.reset();
 }
 
-// Interrupt is called once a millisecond, 
-SIGNAL(TIMER0_COMPA_vect) {
+void loop() {
   unsigned long currentMillis = millis();
-  Serial.print("Current time: ");
-  Serial.println(currentMillis);
 
   if(digitalRead(2) != HIGH) {
-    strip1.kickOff(currentMillis, 50, 5, "rainbowCycle");
+    strip1.kickOff(currentMillis, 4, 5, "rainbowCycle");
+    strip2.kickOff(currentMillis, 3, 10, "rainbowCycle");
+    strip3.kickOff(currentMillis, 2, 15, "rainbowCycle");
+    strip4.kickOff(currentMillis, 1, 20, "rainbowCycle");
   }
   
-//  sweeper1.Update(currentMillis);
-//  sweeper2.Update(currentMillis);
-//  led1.Update(currentMillis);
-//  led2.Update(currentMillis);
-//  strip1.Update(currentMillis);
-} 
-
-void loop() {
+  sweeper1.Update(currentMillis);
+  sweeper2.Update(currentMillis);
+  led1.Update(currentMillis);
+  led2.Update(currentMillis);
+  strip1.Update(currentMillis);
+  strip2.Update(currentMillis);
+  strip3.Update(currentMillis);
+  strip4.Update(currentMillis);
 }
