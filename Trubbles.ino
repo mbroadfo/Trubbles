@@ -4,115 +4,99 @@
   #include <avr/power.h>
 #endif
 
-class NeoPix : Adafruit_NeoPixel {
+class NeoPix : public Adafruit_NeoPixel {
   // Class Member Variables - initialized at startup
-  int ledPin;     // the DIN pin of the NeoPixels
-  long CheckTime; // ms to wait to update the display
-  long OnTime;     // number of seconds to run the display
-  long neoDisp;   // the NeoPixel Display function
-  
+  long CheckTime;  // ms between updates
+  long OnTime;     // Total Display Time
+  String neoDisp;   // Display Type  
   // Current State Variables
   volatile unsigned long previousMillis;  // last time we checked
   volatile unsigned long totalMillis;    //  total ms display has been running
   volatile bool runMode;                 //  whether Neo Display still running
+  volatile int x,y;                     // generic counters within NeoPix
   
   // Constructor - Creates a NeoPix & Initialized Variables & State
   public:
-  NeoPix(int pix, int pin, char flags, long check, long on, char neo) {
-  nbrPixels = pix;
-  ledPin = pin;
-  pixFlags = flags;
-  pinMode(ledPin, OUTPUT);
-  CheckTime = check;
-  OnTime = on;
-  neoDisp = neo; 
-  previousMillis = -1;  // check on creation
-  totalMillis = 0;
-  runMode = true;   // start running when created
-  Pos = 0;
+  NeoPix(uint16_t pix, uint8_t pin, uint8_t nflag) : Adafruit_NeoPixel(pix, pin, nflag) {
+    pinMode(pin, OUTPUT);
+   previousMillis = 0;  
+   totalMillis = 0;
+   x = 0;
+   y = 0;
+   runMode = false;   // start running when created
+  }
+
+  void kickOff(long currMs, long ctime, long otime, String ndisp) {
+    previousMillis = currMs; // Current ms Timer
+    CheckTime = ctime;       // ms between updates
+    OnTime = otime;          // Total Display Time in sec
+    neoDisp = ndisp;         // Display Type
+    totalMillis = 0;         // Clear Total Display Timer
+    x = 0;                   // Generic Counter
+    y = 0;                   // 2nd Generic Counter
+    runMode = true;          // Turn It On
+  }
+
+  void turnOff() {
+    for (int i = 0; numPixels(); i++) {
+      setPixelColor(x,0); // Initialize Pixels
+    }
+    show();               // Clear Display
+    runMode = false;      // Turn Off NeoPix Object
   }
 
   void Update(unsigned long currentMillis) {
-    if(runMode == true and ((currentMillis - previousMillis >= CheckTime) or (previousMillis == -1)) {
+    if(runMode == true and (currentMillis - previousMillis >= CheckTime)) {
       totalMillis += (currentMillis - previousMillis);
       if (totalMillis > OnTime * 1000) {  // if OnTime Exceeded
-        self.begin();                     // clear buffer
-        self.show();                      // clear display
-        runMode = false;                  // stop updating
-        previousMillis = 0;
-        totalMillis = 0;
-        Pos = 0;
-        // need to kill instance when time exceeded
-      } 
+        turnOff();                        // turn off display
+      }
       else {
-        switch(neoDisp) {
-          case 'colorWipe':
-            colorWipe(strip.Color(255, 0, 0)); // Red
-  //          colorWipe(strip.Color(0, 255, 0)); // Green
-  //          colorWipe(strip.Color(0, 0, 255)); // Blue
-            break;
-          case 'rainbow':
-            rainbow();
-            break;
-          case 'rainbowCycle':
-            rainbowCycle();
-            break;
-          case theaterChaseRainbow
-            theaterChaseRainbow();
-            break;
+        if(neoDisp == "colorWipe") {
+          colorWipe(Color(255, 0, 0)); // Red
+//          colorWipe(Color(0, 255, 0)); // Green
+//          colorWipe(Color(0, 0, 255)); // Blue
         }
-    
+        else if(neoDisp == "rainbow") {
+          rainbow();
+        }
+        else if(neoDisp == "rainbowCycle") {
+          rainbowCycle();
+        }
+      }
       previousMillis = currentMillis;  // Remember the time
     }
   }
 
   void colorWipe(uint32_t c) {
   // Fill the dots one after the other with a color    
-    if Pos <= self.numPixels() {
-      self.setPixelColor(Pos, c);
-      self.show();
-      Pos++;          
+    if (x <= numPixels()) {
+      setPixelColor(x, c);
+      show();
+      x++;          
     }
   }
   
   void rainbow() {
     uint16_t i;
-    if Pos < 256 {
-      for(i=0; i<self.numPixels(); i++) {
-        self.setPixelColor(i, Wheel((i+Pos) & 255));
+    if (x < 256) {
+      for(i=0; i<numPixels(); i++) {
+        setPixelColor(i, Wheel((i+x) & 255));
       }
-      self.show();
-      Pos++;    
+      show();
+      x++;    
     }
   }
   
   // Slightly different, this makes the rainbow equally distributed throughout
   void rainbowCycle() {
     uint16_t i;
-    if Pos < 256*5 {
-      Pos++;
-      for(i=0; i< self.numPixels(); i++) {
-        self.setPixelColor(i, Wheel(((i * 256 / self.numPixels()) + Pos) & 255));
+    if (x < 256*5) {
+      for(i=0; i< numPixels(); i++) {
+        setPixelColor(i, Wheel(((i * 256 / numPixels()) + x) & 255));
       }
-      self.show();
-    }
-  }
-  
-  //Theatre-style crawling lights with rainbow effect
-  void theaterChaseRainbow() {
-    for (int j=0; j < 256; j++) {     // cycle all 256 colors in the wheel
-      for (int q=0; q < 3; q++) {
-        for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
-          self.setPixelColor(i+q, Wheel( (i+j) % 255));    //turn every third pixel on
-        }
-        self.show();
-  
-//        delay(wait);
-  
-        for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
-          self.setPixelColor(i+q, 0);        //turn every third pixel off
-        }
-      }
+      show();
+      x++;
     }
   }
   
@@ -121,16 +105,16 @@ class NeoPix : Adafruit_NeoPixel {
   uint32_t Wheel(byte WheelPos) {
     WheelPos = 255 - WheelPos;
     if(WheelPos < 85) {
-      return self.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+      return Color(255 - WheelPos * 3, 0, WheelPos * 3);
     }
     if(WheelPos < 170) {
       WheelPos -= 85;
-      return self.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+      return Color(0, WheelPos * 3, 255 - WheelPos * 3);
     }
     WheelPos -= 170;
-    return self.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+    return Color(WheelPos * 3, 255 - WheelPos * 3, 0);
   }
-}
+};
 
 class Flasher
 {
@@ -232,21 +216,24 @@ Flasher led2(7, 350, 350);
 Sweeper sweeper1(4);
 Sweeper sweeper2(6);
 
-NeoPix strip1(35, 5, NEO_GRB + NEO_KHZ800, 50, 5,"colorWipe");
+NeoPix strip1(35, 5, NEO_GRB + NEO_KHZ800);
 
 // Setup
 void setup() { 
-  sweeper1.Attach(8);
-  sweeper2.Attach(9);
-  
-  // Timer0 is already used for millis() - we'll just interrupt somewhere
-  // in the middle and call the "Compare A" function below
+//  Serial.begin(9600);
+
+  // Timer0 is already used for millis() - we'll just interrupt somewhere in the middle and call the "Compare A" function below
   OCR0A = 0xAF;
   TIMSK0 |= _BV(OCIE0A);
   
+  // Setup Button
   pinMode(2, INPUT_PULLUP);
-  attachInterrupt(0, Reset, FALLING);
 
+  // Attach the Servos
+  sweeper1.Attach(8);
+  sweeper2.Attach(9);
+
+  // Initialize the Strip
   strip1.begin();
   strip1.show();
 } 
@@ -259,6 +246,13 @@ void Reset(){
 // Interrupt is called once a millisecond, 
 SIGNAL(TIMER0_COMPA_vect) {
   unsigned long currentMillis = millis();
+
+//  Serial.println(digitalRead(2));
+
+  if(digitalRead(2) != HIGH) {
+    strip1.kickOff(currentMillis, 1, 10, "rainbowCycle");
+  }
+  
   sweeper1.Update(currentMillis);
   sweeper2.Update(currentMillis);
   led1.Update(currentMillis);
