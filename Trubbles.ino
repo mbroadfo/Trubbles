@@ -9,8 +9,8 @@ class Flasher
   long OffTime;    // milliseconds of off-time
 
   // These maintain the current state
-  int ledState;                 // ledState used to set the LED
-  unsigned long previousMillis;   // will store last time LED was updated
+  volatile int ledState;                // ledState used to set the LED
+  volatile unsigned long previousMillis;    // will store last time LED was updated
 
   // Constructor - creates a Flasher 
   // and initializes the member variables and state
@@ -27,11 +27,8 @@ class Flasher
   previousMillis = 0;
   }
 
-  void Update()
+  void Update(unsigned long currentMillis)
   {
-    // check to see if it's time to change the state of the LED
-    unsigned long currentMillis = millis();
-     
     if((ledState == HIGH) && (currentMillis - previousMillis >= OnTime))
     {
       ledState = LOW;  // Turn it off
@@ -50,10 +47,11 @@ class Flasher
 class Sweeper
 {
   Servo servo;              // the servo
-  int pos;              // current servo position 
-  int increment;        // increment to move for each interval
   int  updateInterval;      // interval between updates
-  unsigned long lastUpdate; // last update of position
+  
+  volatile int pos;                  // current servo position 
+  volatile unsigned long lastUpdate; // last update of position
+  volatile int increment;            // increment to move for each interval
 
 public: 
   Sweeper(int interval)
@@ -72,14 +70,20 @@ public:
     servo.detach();
   }
   
-  void Update()
+  void reset()
   {
-    if((millis() - lastUpdate) > updateInterval)  // time to update
+    pos = 0;
+    servo.write(pos);
+    increment = abs(increment);
+  }
+  
+  void Update(unsigned long currentMillis)
+  {
+    if((currentMillis - lastUpdate) > updateInterval)  // time to update
     {
-      lastUpdate = millis();
+      lastUpdate = currentMillis;
       pos += increment;
       servo.write(pos);
-      Serial.println(pos);
       if ((pos >= 180) || (pos <= 0)) // end of sweep
       {
         // reverse direction
@@ -89,26 +93,55 @@ public:
   }
 };
  
- 
+// Create Action Objects 
 Flasher led1(6, 123, 400);
 Flasher led2(7, 350, 350);
 
-Sweeper sweeper1(3);
-Sweeper sweeper2(7);
- 
+Sweeper sweeper1(4);
+Sweeper sweeper2(6);
+
+// Setup
 void setup() 
 { 
   Serial.begin(9600);
   sweeper1.Attach(8);
   sweeper2.Attach(9);
+  
+  // Timer0 is already used for millis() - we'll just interrupt somewhere
+  // in the middle and call the "Compare A" function below
+  OCR0A = 0xAF;
+  TIMSK0 |= _BV(OCIE0A);
+  
+  pinMode(2, INPUT_PULLUP);
+  attachInterrupt(0, Reset, FALLING);
 } 
  
- 
-void loop() 
-{ 
-  sweeper1.Update();
-  sweeper2.Update();
+void Reset()
+{
+  sweeper1.reset();
+  sweeper2.reset();
+}
+
+// Interrupt is called once a millisecond, 
+SIGNAL(TIMER0_COMPA_vect) 
+{
+  unsigned long currentMillis = millis();
+
+  Serial.print("Current=");
+  Serial.println(currentMillis);
   
-  led1.Update();
-  led2.Update();
+  
+ // sweeper1.Update(currentMillis);
+  
+  //if(digitalRead(2) == HIGH)
+  {
+ //    sweeper2.Update(currentMillis);
+ //    led1.Update(currentMillis);
+  }
+  
+ // led2.Update(currentMillis);
+} 
+
+void loop()
+{
 }
