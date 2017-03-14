@@ -1,4 +1,4 @@
- #include <Servo.h> 
+#include <Servo.h> 
 #include <Adafruit_NeoPixel.h>
 
 // Pattern types supported:
@@ -433,7 +433,7 @@ public:
             lastUpdate = currentMillis;
             pos += increment;
             servo.write(pos);
-            if ((pos >= 180) || (pos <= 0)) {   // end of sweep = reverse direction
+            if ((pos >= 180) || (pos <= 90)) {   // end of sweep = reverse direction
               increment = -increment;
             }
           }
@@ -476,15 +476,20 @@ NeoPatterns Thing3(16, 18, NEO_GRB + NEO_KHZ800, &Thing3Complete);
 NeoPatterns Thing4(8, 15, NEO_GRB + NEO_KHZ800, &Thing4Complete);
 NeoPatterns Thing5(8, 15, NEO_GRB + NEO_KHZ800, &Thing5Complete);
 
-int but1,but2;
+int but1,butState1,butPrev1;
+int but2,butState2,butPrev2;
+long duration, debounce;
+
 
 // ################################################################
 // Setup
 void setup() { 
+  but1 = 14;
+  butState1, butState2, butPrev1, butPrev2 = LOW;
+  but2 = 16;
+
   Serial.begin(115200);
   // Setup Buttons
-  but1 = 14;
-  but2 = 16;
   pinMode(but1, INPUT_PULLUP);
   pinMode(but2, INPUT_PULLUP);
 
@@ -525,6 +530,9 @@ void loop() {
         Thing3.startDisp(5);
         Thing4.startDisp(5);
         Thing5.startDisp(5);
+        sweeper1.startDisp(5);
+        sweeper2.startDisp(5);
+
       }
       else if (rx == 'b') {
         Thing1.TheaterChase(Thing1.Color(255,255,0), Thing1.Color(0,0,50), 100);
@@ -549,6 +557,7 @@ void loop() {
         Thing3.startDisp(9);
         Thing4.startDisp(9);
         Thing5.startDisp(9);
+        sweeper1.startDisp(5);
       }
       else if (rx == 'd') {
         Thing1.Scanner(Thing1.Color(255,0,0), 55);
@@ -561,6 +570,7 @@ void loop() {
         Thing3.startDisp(7);
         Thing4.startDisp(7);
         Thing5.startDisp(7);
+        sweeper2.startDisp(5);
       }
       else if (rx == 'e') {
         Thing1.TheaterChase(Thing1.Color(255,255,0), Thing1.Color(0,0,50), 100);
@@ -568,7 +578,6 @@ void loop() {
         Thing2.Color1 = Thing1.Color1;
         Thing3.Patriot(3,100);
         Thing4.Scanner(Thing1.Color(255,0,0), 55);
-
         sweeper1.startDisp(4);
       }
       else if (rx == 'f') {
@@ -577,7 +586,6 @@ void loop() {
         Thing2.Color1 = Thing1.Color1;
         Thing3.Patriot(3,100);
         Thing4.Scanner(Thing1.Color(255,0,0), 55);
-
         sweeper2.startDisp(6);
       }
       else if (rx == 'g') {
@@ -587,7 +595,8 @@ void loop() {
         Thing2.Color1 = Thing1.Color1;
         Thing3.Patriot(3,100);
         Thing4.Scanner(Thing1.Color(255,0,0), 55);
-
+        sweeper1.startDisp(5);
+        sweeper2.startDisp(5);
       }
       else if (rx == 'h') {
         Thing1.TheaterChase(Thing1.Color(255,255,0), Thing1.Color(0,0,50), 100);
@@ -595,23 +604,16 @@ void loop() {
         Thing2.Color1 = Thing1.Color1;
         Thing3.Patriot(3,100);
         Thing4.Scanner(Thing1.Color(255,0,0), 55);
-
-        led2.startDisp(14);
       }
     }
 
+    
     if (digitalRead(but1) == LOW) {
-      Thing1.startDisp(2);
-      Thing2.startDisp(2);
-      Thing3.startDisp(2);
-      Thing4.startDisp(2);      
+      Serial.write("1");
     }
 
    if (digitalRead(but2) == LOW) {
-      sweeper1.startDisp(2);
-      sweeper2.startDisp(2);
-      led1.startDisp(2);
-      led2.startDisp(2);      
+      Serial.write("2");
     }
 
     // Update the things.
@@ -622,7 +624,6 @@ void loop() {
     sweeper1.Update();
     sweeper2.Update();
     led1.Update();
-    led2.Update();
 }
 
 //------------------------------------------------------------
@@ -677,6 +678,13 @@ void Thing4Complete()
 {
     // Random color change for next scan
 //    Thing4.Reverse();
+}
+// Thing4 Completion Callback
+
+void Thing5Complete()
+{
+    // Random color change for next scan
+//    Thing5.Reverse();
 }
 
 
