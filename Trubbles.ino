@@ -459,8 +459,8 @@ public:
 
 // ################################################################
 // Create Action Objects 
-Flasher led1(6, 123, 400);
-Flasher led2(7, 350, 350);
+Flasher led1(10, 123, 400);
+Flasher led2(8, 350, 350);
 
 Sweeper sweeper1(4);
 Sweeper sweeper2(6);
@@ -470,10 +470,10 @@ void Thing1Complete();
 void Thing2Complete();
 void Thing3Complete();
 void Thing4Complete();
-NeoPatterns Thing1(35, 10, NEO_GRB + NEO_KHZ800, &Thing1Complete);
-NeoPatterns Thing2(12, 3, NEO_GRB + NEO_KHZ800, &Thing2Complete);
-NeoPatterns Thing3(8, 4, NEO_GRB + NEO_KHZ800, &Thing3Complete);
-NeoPatterns Thing4(8, 5, NEO_GRB + NEO_KHZ800, &Thing4Complete);
+NeoPatterns Thing1(35, 20, NEO_GRB + NEO_KHZ800, &Thing1Complete);
+NeoPatterns Thing2(12, 19, NEO_GRB + NEO_KHZ800, &Thing2Complete);
+NeoPatterns Thing3(16, 18, NEO_GRB + NEO_KHZ800, &Thing3Complete);
+NeoPatterns Thing4(8, 15, NEO_GRB + NEO_KHZ800, &Thing4Complete);
 
 int but1,but2;
 
@@ -482,14 +482,14 @@ int but1,but2;
 void setup() { 
   Serial.begin(115200);
   // Setup Buttons
-  but1 = 2;
-  but2 = 11;
+  but1 = 14;
+  but2 = 16;
   pinMode(but1, INPUT_PULLUP);
   pinMode(but2, INPUT_PULLUP);
 
   // Attach the Servos
-  sweeper1.Attach(8);
-  sweeper2.Attach(9);
+  sweeper1.Attach(3);
+  sweeper2.Attach(5);
 
   // Initialize all the Things
   Thing1.begin();
@@ -501,8 +501,8 @@ void setup() {
   Thing1.TheaterChase(Thing1.Color(255,255,0), Thing1.Color(0,0,50), 100);
   Thing2.RainbowCycle(3);
   Thing2.Color1 = Thing1.Color1;
-  Thing3.Scanner(Thing1.Color(255,0,0), 55);
-  Thing4.Patriot(3,100);
+  Thing3.Patriot(3,100);
+  Thing4.Scanner(Thing1.Color(255,0,0), 55);
 
   Thing1.endDisp();
   Thing2.endDisp();
@@ -519,28 +519,38 @@ void loop() {
     if (Serial.available()) {
       char rx = Serial.read();
       
-      if      (rx == 'a') {Thing1.startDisp(5);}
-      else if (rx == 'b') {Thing2.startDisp(8);}
-      else if (rx == 'c') {Thing3.startDisp(9);}
-      else if (rx == 'd') {Thing4.startDisp(7);}
-      else if (rx == 'e') {sweeper1.startDisp(4);}
-      else if (rx == 'f') {sweeper2.startDisp(6);}
-      else if (rx == 'g') {led1.startDisp(8);}
-      else if (rx == 'h') {led2.startDisp(14);}
+      if (rx == 'a') {
+          Thing1.startDisp(5);
+      }
+      else if (rx == 'b') {
+        Thing2.startDisp(8);
+      }
+      else if (rx == 'c') {
+        Thing3.startDisp(9);
+      }
+      else if (rx == 'd') {
+        Thing4.startDisp(7);
+      }
+      else if (rx == 'e') {
+        sweeper1.startDisp(4);
+      }
+      else if (rx == 'f') {
+        sweeper2.startDisp(6);
+      }
+      else if (rx == 'g') {
+        led1.startDisp(8);
+      }
+      else if (rx == 'h') {
+        led2.startDisp(14);
+      }
     }
 
     if (digitalRead(but1) == LOW) {
-      Thing1.startDisp(2);
-      Thing2.startDisp(2);
-      Thing3.startDisp(2);
-      Thing4.startDisp(2);      
+      Serial.write("1");
     }
 
-    if (digitalRead(but2) == LOW) {
-      sweeper1.startDisp(2);
-      sweeper2.startDisp(2);
-      led1.startDisp(2);
-      led2.startDisp(2);      
+   if (digitalRead(but2) == LOW) {
+      Serial.write("2");
     }
 
     // Update the things.
