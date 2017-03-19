@@ -456,7 +456,7 @@ NeoPatterns Thing1(35, 20, NEO_GRB + NEO_KHZ800, &Thing1Complete);
 NeoPatterns Thing2(12, 19, NEO_GRB + NEO_KHZ800, &Thing2Complete);
 NeoPatterns Thing3(16, 18, NEO_GRB + NEO_KHZ800, &Thing3Complete);
 NeoPatterns Thing4(8, 15, NEO_GRB + NEO_KHZ800, &Thing4Complete);
-NeoPatterns Thing5(8, 14, NEO_GRB + NEO_KHZ800, &Thing5Complete);
+NeoPatterns Thing5(8, 17, NEO_GRB + NEO_KHZ800, &Thing5Complete);
 
 int but1,butState1,butPrev1;
 int but2,butState2,butPrev2;
