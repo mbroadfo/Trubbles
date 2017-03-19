@@ -366,6 +366,9 @@ class Sweeper {
   int pinOut;               // the control pin
   int updateInterval;       // interval between updates
   int iterations;           // number of times to sweep
+  int startDeg;             // starting pos
+  int endDeg;               // ending pos
+  int parkDeg;              // park pos
   bool runMode;             // Whether we are running the Sweeper or not
   
   volatile int pos;                       // current servo position 
@@ -377,6 +380,7 @@ class Sweeper {
 public: 
   Sweeper(int pin) {
     pinOut = pin;
+    parkDeg = 0;          // Park Position for Servo
     runMode = false;
   }
   
@@ -393,18 +397,22 @@ public:
   void reset() {
     pos = 0;
     servo.write(pos);
-    increment = abs(increment);
+    increment = 1;
   }
   
   // Start the Sweeper
-  void startDisp(int iters, int interval) {
+  void startDisp(int iters, int interval, int sd, int ed) {
     iterations = iters;
     updateInterval = interval;
-    increment = 1;
+    startDeg = sd;
+    endDeg = ed;
+    increment = 1;      // Requires startDeg < endDeg
     turns = 0;
     lastUpdate = millis();
     runMode = true;
-//    Serial.println("Start Sweeper on pin "+String(pinOut)+" at "+String(lastUpdate)+" for "+String(iterations)+" iterations with " + String(updateInterval) + " ms intervals");
+    pos = startDeg;
+    servo.write(pos);
+//    Serial.println("Start Sweeper on pin "+String(pinOut)+" at "+String(lastUpdate)+" for "+String(iterations)+" iterations with " + String(updateInterval) + " ms intervals"+" S/E:"+String(startDeg)+"/"+String(endDeg));
   }
   
   void Update() {
@@ -418,10 +426,11 @@ public:
                   lastUpdate = currentMillis;
                   pos += increment;
                   servo.write(pos);
-                  if(pos >= 135 || pos <= 0) {
+//                  Serial.println("Position = "+String(pos));
+                  if(pos >= endDeg || pos <= startDeg) {
                       increment = -increment;
                   }
-                  if(pos <= 0) { 
+                  if(pos <= startDeg) { 
                       turns++;
 //                      Serial.println("Turns Completed on pin "+String(pinOut)+" = " + String(turns));
                   }
@@ -553,17 +562,17 @@ void loop() {
       }
       else if (rx == 'e') {
         sweeper1.Attach();
-        sweeper1.startDisp(4,4);
+        sweeper1.startDisp(4,2,45,135);
       }
       else if (rx == 'f') {
         sweeper2.Attach();
-        sweeper2.startDisp(6,6);
+        sweeper2.startDisp(4,2,45,135);
       }
       else if (rx == 'g') {
         sweeper1.Attach();
-        sweeper1.startDisp(4,6);
+        sweeper1.startDisp(4,6,45,180);
         sweeper2.Attach();
-        sweeper2.startDisp(6,4);
+        sweeper2.startDisp(4,6,25,180);
       }
       else if (rx == 'h') {
         led1.startDisp(600);
