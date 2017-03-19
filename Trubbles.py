@@ -88,6 +88,7 @@ class BlinkyStreamer(TwythonStreamer):
 
 		if ser.inWaiting() > 0:
 			btnChk = ser.read()
+			print "Button Check = ",str(btnChk)
 			if btnChk == '1':
 				tlist.captureTweets(10)
 				tlist.displayHeatMap()
