@@ -1,9 +1,12 @@
 #!/usr/bin/python
+from time import sleep
 import time, re, pygame, serial, os
 import mysql.connector as mariadb
 from gtts import gTTS
 from twython import TwythonStreamer
 from termcolor import colored
+import tweepy
+from credentials import *
 
 import sys
 reload(sys)
@@ -13,99 +16,81 @@ print colored('-----------','yellow')
 print colored('hello', 'red'), colored('world', 'blue')
 print colored('-----------','yellow')
 
-# Search terms - Deprecated - now using relational tables
-#TERMS = ['@POTUS','@WhiteHouse']
-#actionList  = (['1','@POTUS','@WhiteHouse','@PressSec','@realDonaldTrump','@FLOTUS'],
-#               ['2','@VP','@DeptofDefense','@DHSgov','@CIA','@UN','@StateDept','@USTreasury','@real_sessions','@HHSGov','@USChamber'],
-#               ['3','@SenateMajLdr','@SpeakerRyan','@GOPLeader','@GOP','@NancyPelosi'],
-#               ['4','@FoxNews','@foxheadlines','@foxnewsalert','@seanhannity','@oreillyfactor','@foxandfriends','@LouDobbs'])
-#actionColor = ['red','yellow','magenta','cyan']
-
-''' Hi John - here's how you access our mariadb tables:
-	mysql -p [enter password]
-	use Trubbles;
-	show tables;
-enjoy'''
-
-
 # Twitter application authentication
-APP_KEY = 'idd0G91xrCTttBBRiEDtxGEry'
-APP_SECRET = '3e8ZhY1RmaWPHsc6mJgwMA7IxbgPB2J2WknDyebSVo9sbxHmiQ'
-OAUTH_TOKEN = '49630765-tLYMPuHgeLdfNqsQHTVJXltdve3Xi6mqLpvkCotr5'
-OAUTH_TOKEN_SECRET = 'BzuZA6SAIF9BIg4DAuwggTvnLQdTGNzE2mtOyA2PBrd1q'
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
 
 # -------------------------------------------------------------------------------------------
 
 # Setup callbacks from Twython Streamer
-class BlinkyStreamer(TwythonStreamer):
-        def on_success(self, data):
-                if 'text' in data:
-			tweet = data['text'].encode('utf-8')
-			patrn1 = re.compile('^(RT )?(.*?@.*?:)\s(.*$)')
-			twitt = re.search(patrn1,tweet)
-			if twitt is not None:
-				ser.write('h')		#  Blink LED Heartbeat
-				rtwit = twitt.group(1)
-				from1 = twitt.group(2)
-				body1 = twitt.group(3)
-				body1 = re.sub(r'http\S+','',body1)
-				body1 = re.sub('$amp;','and',body1)
-				body1 = re.sub('&amp;','and',body1)
-				body1 = re.sub('"','',body1)
-				body1 = re.sub('@','',body1)
-				body1 = re.sub('#','',body1)
-				aList = 0
-
-				if xList.has_key(from1):
-					aList = xList[from1]
-					aCommand = xCommand[from1]
-					aColor = xColor[from1]
-					aSound = xSound[from1]
-					aTrig = from1
-
-				# Capture Tweet & Current Counter
-				cntr = tlist.insTweet(from1,body1,aList)
-
-				# Print Current Tweet
+class trubbleProcessor:
+	def processTweet(self, twitTxt):
+		ser.write('h')					#  Blink LED Heartbeat
+		tweet = twitTxt.encode('utf-8')
+		patrn1 = re.compile('^(RT )?(.*?@.*?:)\s(.*$)')
+		twitt = re.search(patrn1,tweet)
+		if twitt is not None:
+			rtwit = twitt.group(1)
+			from1 = twitt.group(2)
+			body1 = twitt.group(3)
+			body1 = re.sub(r'http\S+','',body1)
+			body1 = re.sub('$amp;','and',body1)
+			body1 = re.sub('&amp;','and',body1)
+			body1 = re.sub('\n',' ',body1)
+			body1 = re.sub('\r',' ',body1)
+			body1 = re.sub('\t',' ',body1)
+			body1 = re.sub('"','',body1)
+			body1 = re.sub('@','',body1)
+			body1 = re.sub('#','',body1)
+			aList = 0
+			if xList.has_key(from1):
+				aList = xList[from1]
+				aCommand = xCommand[from1]
+				aColor = xColor[from1]
+				aSound = xSound[from1]
+				aTrig = from1
+			# Capture Tweet & Current Counter
+			cntr = tlist.insTweet(from1,body1,aList)
+			
+			# Print Current Tweet
+			reTwit = False
+			if rtwit is not None:
+				reTwit = True
+				from1 = from1 + ' (' + str.strip(rtwit) + str(cntr) + ')'
+			elif from1 != str.strip(from1):
+				print colored('! NEW TWEET !','blue')
 				reTwit = False
-				if rtwit is not None:
-					reTwit = True
-					from1 = from1 + ' (' + str.strip(rtwit) + str(cntr) + ')'
-				elif from1 != str.strip(from1):
-					print colored('! NEW TWEET !','blue')
-					reTwit = False
-				print from1
-				print ' ' + body1
-				
-				# Print List Match Results, Send Action, & Play mp3
-				if aList != 0:
-					print colored('!!! ACTION ' + str(aList) + ' !!! - triggered by ' + aTrig + "[" + aSound + "]", aColor)
-					ser.write(aCommand)				# send the action
-					pygame.mixer.music.load("sounds/"+aSound)
-					pygame.mixer.music.play()			# play the sound
-				tlist.insHeatMap(aList)				# capture heat map
-				print '----------------------------------------------'
+			print from1
+			print ' ' + body1
 
-		if ser.inWaiting() > 0:
-			btnChk = ser.read()
-			print "Button Check = ",str(btnChk)
-			if btnChk == '1':
-				tlist.captureTweets(10)
-				tlist.displayHeatMap()
-				tlist.releaseTweets(10)
+
+			# Print List Match Results, Send Action, & Play mp3
+			if aList != 0:
+				print colored('!!! ACTION ' + str(aList) + ' !! - triggered by ' + aTrig + "[" + aSound + "]", aColor)
+				ser.write(aCommand)				# send the action
+				pygame.mixer.music.load("sounds/"+aSound)
+				pygame.mixer.music.play()			# play the sound
+			tlist.insHeatMap(aList)				# capture heat map
+			print '----------------------------------------------'
+			
+			if ser.inWaiting() > 0:	
+				btnChk = ser.read()
+				print "Button Check = ",str(btnChk)
+				if btnChk == '1':
+					tlist.captureTweets(10)
+					tlist.displayHeatMap()
+					tlist.releaseTweets(10)
+					tlist.clear()
+				if btnChk == '2':
+					tlist.retrieveHeatMap()
+					tlist.retrieveTweets(10)
+			
+			if time.time() > (tlist.lastTimer + tlist.capDelay):
+				tlist.captureTweets(50)
 				tlist.clear()
-			if btnChk == '2':
-				tlist.retrieveHeatMap()
-				tlist.retrieveTweets(10)
-
-		if time.time() > (tlist.lastTimer + tlist.capDelay):
-			tlist.captureTweets(50)
-			tlist.clear()
-			tlist.displayHeatMap()
-			tlist.lastTimer = time.time()
-
-	def on_error(self, status_code, data):
-		print 'Tweet Stream Error:' + str(status_code) + ' ' + str(data)
+				tlist.displayHeatMap()
+				tlist.lastTimer = time.time()
+	
 
 # -------------------------------------------------------------------------
 
@@ -225,6 +210,7 @@ class topTweets:
 # -------------------------------------------------------------------------------------------
 pygame.mixer.init()
 os.system( 'amixer -q set PCM -- 80%' )
+tproc = trubbleProcessor()
 tlist = topTweets()
 
 # Connect to Database
@@ -234,10 +220,15 @@ cursor = mariadb_connection.cursor(buffered=True)
 # Capture Terms for Twitter
 cursor.execute("SELECT topic from topics where active is true;")
 array = cursor.fetchall()
-TERMS = []
+TERMS = ''
+i = 0
 for row in array:
-        TERMS.append(row[0].encode("utf-8"))
-
+	if (i <> 0):
+		TERMS += ' OR '
+        TERMS += (row[0].encode("utf-8"))
+	i += 1
+print "Search List: ", TERMS
+print "-----------------------------------------------------"
 # Capture Lists, & Actors
 cursor.execute("\
 SELECT A.listid, CONCAT(B.actor,':'), A.command, A.textColor, \
@@ -266,18 +257,20 @@ running = True
 while running:
 	# Create Streamer
 	print 'Creating Streamer...'
+	print '--------------------'
 	try:
-		stream = BlinkyStreamer(APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
-		stream.statuses.filter(track=TERMS)
+		stream = tweepy.API(auth)
+		for tweet in tweepy.Cursor(stream.search, q=TERMS).items():
+			tproc.processTweet(tweet.text)
+			sleep(1)
 	except KeyboardInterrupt:
 		running = False
 		print colored('\n-----------','yellow')
 		print colored('Goodbye.','cyan')
 		print colored('-----------','yellow')
+	except tweepy.TweepError as e:
+		print(e.reason)
+		continue
 	except Exception as e:
 		print 'STREAMER ERROR: ' + str(e)
 		continue
-	
-
-
-
