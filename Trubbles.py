@@ -1,15 +1,12 @@
 #!/usr/bin/python
 from time import sleep
-import time, re, pygame, serial, os
+import time, re, serial, os, sys
 import mysql.connector as mariadb
-from gtts import gTTS
-from twython import TwythonStreamer
 from termcolor import colored
 import tweepy
 from credentials import *
 from gtts import gTTS
 
-import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
@@ -21,9 +18,11 @@ print colored('-----------','yellow')
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 
-# -------------------------------------------------------------------------------------------
+# Set Initial Volume
+os.system( 'amixer -q set PCM -- 100%' )
 
-# Setup callbacks from Twython Streamer
+# -------------------------------------------------------------------------------------------
+# Process Trubble tweets
 class trubbleProcessor:
 	def processTweet(self, twitTxt):
 		ser.write('h')					#  Blink LED Heartbeat
@@ -69,23 +68,21 @@ class trubbleProcessor:
 			# Print List Match Results, Send Action, & Play mp3
 			if aList != 0:
 				print colored('!!! ACTION ' + str(aList) + ' !! - triggered by ' + aTrig + "[" + aSound + "]", aColor)
-				ser.write(aCommand)				# send the action
-				pygame.mixer.music.load("sounds/"+aSound)
-				pygame.mixer.music.play()			# play the sound
+				ser.write(aCommand)			# send the action
+				os.system('mpg321 -q sounds/'+aSound)
 			tlist.insHeatMap(aList)				# capture heat map
 			print '----------------------------------------------'
 			
-			if ser.inWaiting() > 0:	
-				btnChk = ser.read()
-				print "Button Check = ",str(btnChk)
-				if btnChk == '1':
-					tlist.captureTweets(10)
-					tlist.displayHeatMap()
-					tlist.releaseTweets(10)
-					tlist.clear()
-				if btnChk == '2':
-					tlist.retrieveHeatMap()
-					tlist.retrieveTweets(10)
+			# Check to see if Button has been pressed
+			btnChk = buttn.check()
+			if btnChk == '1':
+				tlist.captureTweets(10)
+				tlist.displayHeatMap()
+				tlist.releaseTweets(10)
+				tlist.clear()
+			if btnChk == '2':
+				tlist.retrieveHeatMap()
+				tlist.retrieveTweets(10)
 			
 			if time.time() > (tlist.lastTimer + tlist.capDelay):
 				tlist.captureTweets(50)
@@ -120,18 +117,15 @@ class topTweets:
 
 	def releaseTweets(self,count):
 		i = 0
-		os.system( 'amixer -q set PCM -- 100%' )
 		print '!!! PLAYING LATEST TOP', str(count),'TWEETs !!!'
 		for key, value in sorted(topTweets.tweetList.items(), key=lambda (k,v): (v,k), reverse = True):
+			# Check for Button pressed during playback
+			btnChk = buttn.check()
+			if btnChk == '1' or btnChk == '2':
+				break
+			
 			print "%s) %s[%s] %s %s" % (str(i+1),str(value[0]),str(value[2]),str(value[1]), str(key))
 			if value[0] != 0:
-#				tts = gTTS(text=key, lang='en')
-#				tts.save('sounds/~temp.mp3')
-#				pygame.mixer.music.load('sounds/~temp.mp3')
-#				pygame.mixer.music.play()
-
-#				os.system( 'flite -t "' + key + '"' )
-
 				tts = gTTS(key, lang = 'en')
 				tts.save('temp.mp3')
 				os.system('mpg321 -q temp.mp3')
@@ -139,11 +133,9 @@ class topTweets:
 			if i >= count:
 				break
 		print '---------------------------------------------------'
-		os.system( 'amixer -q set PCM -- 80%' )
 
 	def captureTweets(self,count):
 		mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
-		os.system( 'amixer -q set PCM -- 100%' )
 		i = 0
 		print '!!! CAPTURING LATEST TOP', str(count),'TWEETs !!!'
 		sqlstmt = 'INSERT INTO tweetStore (listr,fromr,bodyr,countr,createDate) VALUES '
@@ -171,23 +163,25 @@ class topTweets:
 	def retrieveTweets(self,count):
 		print '!!! PLAYING ALL-TIME TOP', str(count),'TWEETs !!!'
 		i = 0
-		os.system( 'amixer -q set PCM -- 100%' )
 		mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
 		cursor = mariadb_connection.cursor(buffered=True)
 		sqlstmt = "SELECT countr, fromr, bodyr, listr FROM tweetStore ORDER BY 1 DESC LIMIT %s;" % count
 		cursor.execute(sqlstmt)
 		for rCountr, rFromr, rBodyr, rListr in cursor:
+			# Check for Button pressed during playback
+			btnChk = buttn.check()
+			if btnChk == '1' or btnChk == '2':
+				break
+
 			print "%s) %s[%s] %s %s" % (str(i+1),str(rCountr),str(rListr), str(rFromr),str(rBodyr))
 			if rCountr != 0:
 				tts = gTTS(rBodyr, lang = 'en')
 				tts.save('temp.mp3')
 				os.system('mpg321 -q temp.mp3')
-#				os.system( 'flite -t "' + rBodyr + '"' )
 			i += 1
 			if i >= count:
 				break
 		print '---------------------------------------------------'
-		os.system( 'amixer -q set PCM -- 80%' )
 		mariadb_connection.close()
 
 	def insHeatMap(self, listn):
@@ -216,13 +210,26 @@ class topTweets:
 		print '---------------------------------------------------'
 		mariadb_connection.close()
 
+# ----------------------------------------------------------------------------------------
+class Button:
+	def __init__ (self):
+		buttnChk = ''		# button state variable
+	
+	def check(self):
+		buttnChk = ''
+		if ser.inWaiting() > 0:	
+			buttnChk = ser.read()
+			print "Button Check = ",str(buttnChk)
+			ser.flushInput()
+
+		return buttnChk
+
 # -------------------------------------------------------------------------------------------
 # Setup / Initialize
 # -------------------------------------------------------------------------------------------
-pygame.mixer.init()
-os.system( 'amixer -q set PCM -- 80%' )
 tproc = trubbleProcessor()
 tlist = topTweets()
+buttn = Button()
 
 # Connect to Database
 mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
@@ -240,6 +247,7 @@ for row in array:
 	i += 1
 print "Search List: ", TERMS
 print "-----------------------------------------------------"
+
 # Capture Lists, & Actors
 cursor.execute("\
 SELECT A.listid, CONCAT(B.actor,':'), A.command, A.textColor, \
