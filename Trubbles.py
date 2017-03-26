@@ -7,6 +7,7 @@ from twython import TwythonStreamer
 from termcolor import colored
 import tweepy
 from credentials import *
+from gtts import gTTS
 
 import sys
 reload(sys)
@@ -41,6 +42,7 @@ class trubbleProcessor:
 			body1 = re.sub('\t',' ',body1)
 			body1 = re.sub('"','',body1)
 			body1 = re.sub('@','',body1)
+			body1 = re.sub('\u2026','',body1)
 			body1 = re.sub('#','',body1)
 			aList = 0
 			if xList.has_key(from1):
@@ -127,7 +129,12 @@ class topTweets:
 #				tts.save('sounds/~temp.mp3')
 #				pygame.mixer.music.load('sounds/~temp.mp3')
 #				pygame.mixer.music.play()
-				os.system( 'flite -t "' + key + '"' )
+
+#				os.system( 'flite -t "' + key + '"' )
+
+				tts = gTTS(key, lang = 'en')
+				tts.save('temp.mp3')
+				os.system('mpg321 -q temp.mp3')
 			i += 1
 			if i >= count:
 				break
@@ -164,6 +171,7 @@ class topTweets:
 	def retrieveTweets(self,count):
 		print '!!! PLAYING ALL-TIME TOP', str(count),'TWEETs !!!'
 		i = 0
+		os.system( 'amixer -q set PCM -- 100%' )
 		mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
 		cursor = mariadb_connection.cursor(buffered=True)
 		sqlstmt = "SELECT countr, fromr, bodyr, listr FROM tweetStore ORDER BY 1 DESC LIMIT %s;" % count
@@ -171,7 +179,10 @@ class topTweets:
 		for rCountr, rFromr, rBodyr, rListr in cursor:
 			print "%s) %s[%s] %s %s" % (str(i+1),str(rCountr),str(rListr), str(rFromr),str(rBodyr))
 			if rCountr != 0:
-				os.system( 'flite -t "' + rBodyr + '"' )
+				tts = gTTS(rBodyr, lang = 'en')
+				tts.save('temp.mp3')
+				os.system('mpg321 -q temp.mp3')
+#				os.system( 'flite -t "' + rBodyr + '"' )
 			i += 1
 			if i >= count:
 				break
