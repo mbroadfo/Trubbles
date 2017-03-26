@@ -41,8 +41,10 @@ class trubbleProcessor:
 			body1 = re.sub('\t',' ',body1)
 			body1 = re.sub('"','',body1)
 			body1 = re.sub('@','',body1)
-			body1 = re.sub('\u2026','',body1)
 			body1 = re.sub('#','',body1)
+			if (ord(body1[-3]) == 226 and ord(body1[-2]) == 128 and ord(body1[-1]) == 166):
+				body1 = body1[:-3]
+
 			aList = 0
 			if xList.has_key(from1):
 				aList = xList[from1]
@@ -84,13 +86,6 @@ class trubbleProcessor:
 				tlist.retrieveHeatMap()
 				tlist.retrieveTweets(10)
 			
-			if time.time() > (tlist.lastTimer + tlist.capDelay):
-				tlist.captureTweets(50)
-				tlist.clear()
-				tlist.displayHeatMap()
-				tlist.lastTimer = time.time()
-	
-
 # -------------------------------------------------------------------------
 
 class topTweets:
