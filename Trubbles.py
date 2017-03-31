@@ -85,6 +85,12 @@ class trubbleProcessor:
 			if btnChk == '2':
 				tlist.retrieveHeatMap()
 				tlist.retrieveTweets(10)
+
+			if time.time() > (tlist.lastTimer + tlist.capDelay):
+				tlist.captureTweets(50)
+				tlist.displayHeatMap()
+				tlist.clear()
+				tlist.lastTimer = time.time()
 			
 # -------------------------------------------------------------------------
 
@@ -93,7 +99,7 @@ class topTweets:
 	def __init__ (self):
 		topTweets.tweetList = {}		# initialize dictionary
 		topTweets.twitList = {}			# initialize tweet library
-		topTweets.capDelay = 600		# default capture delay (sec)
+		topTweets.capDelay = 60*60*24		# default capture delay (sec)
 		topTweets.lastTimer = time.time()
 		topTweets.heatMap = {}			# initialize heat map
 
@@ -160,7 +166,7 @@ class topTweets:
 		i = 0
 		mariadb_connection = mariadb.connect(user='Trublet', password='notsecret', database='Trubbles')
 		cursor = mariadb_connection.cursor(buffered=True)
-		sqlstmt = "SELECT countr, fromr, bodyr, listr FROM tweetStore ORDER BY 1 DESC LIMIT %s;" % count
+		sqlstmt = "SELECT countr, fromr, bodyr, listr FROM tweetStore WHERE listr <> 0 ORDER BY 1 DESC LIMIT %s;" % count
 		cursor.execute(sqlstmt)
 		for rCountr, rFromr, rBodyr, rListr in cursor:
 			# Check for Button pressed during playback
