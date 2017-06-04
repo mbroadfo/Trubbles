@@ -25,11 +25,11 @@ os.system( 'amixer -q set PCM -- 100%' )
 # Process Trubble tweets
 class trubbleProcessor:
 	def processTweet(self, twitTxt):
-		ser.write('h')					#  Blink LED Heartbeat
 		tweet = twitTxt.encode('utf-8')
 		patrn1 = re.compile('^(RT )?(.*?@.*?:)\s(.*$)')
 		twitt = re.search(patrn1,tweet)
 		if twitt is not None:
+			ser.write('h')					#  Blink LED Heartbeat
 			rtwit = twitt.group(1)
 			from1 = twitt.group(2)
 			body1 = twitt.group(3)
@@ -70,7 +70,7 @@ class trubbleProcessor:
 			# Print List Match Results, Send Action, & Play mp3
 			if aList != 0:
 				print colored('!!! ACTION ' + str(aList) + ' !! - triggered by ' + aTrig + "[" + aSound + "]", aColor)
-				ser.write(aCommand)			# send the action
+				ser.write(aCommand.encode())		# encode & send the action
 				os.system('mpg321 -q sounds/'+aSound)
 			tlist.insHeatMap(aList)				# capture heat map
 			print '----------------------------------------------'
